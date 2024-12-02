@@ -1,0 +1,407 @@
+/* Background Colors */
+.gjs-one-bg {
+    background-color: #2c2f33 !important;
+    /* Dark charcoal */
+}
+
+.gjs-two-bg {
+    background-color: #36393f !important;
+    /* Medium-dark gray */
+}
+
+.gjs-three-bg {
+    background-color: #444b52 !important;
+    /* Slightly lighter gray */
+}
+
+/* Text Colors */
+.gjs-one-color {
+    color: #e4e6eb !important;
+    /* Soft white */
+}
+
+.gjs-two-color {
+    color: #aeb3b9 !important;
+    /* Cool gray */
+}
+
+.gjs-four-color-h {
+    color: #7289da !important;
+    /* Blue for hover or highlight */
+}
+
+/* Border Styling */
+.gjs-border-color {
+    border-color: #4e555d !important;
+    /* Subtle gray border */
+}
+
+/* Button and Accent Colors */
+.gjs-btn {
+    background-color: #7289da !important;
+    /* Discord-inspired blue */
+    color: #ffffff !important;
+    /* White text */
+    border-radius: 5px !important;
+    /* Rounded buttons */
+}
+
+.gjs-btn:hover {
+    background-color: #5b6fbe !important;
+    /* Slightly darker blue hover */
+}
+
+/* Highlight for Selected Items */
+.gjs-four-color-h:hover,
+.gjs-four-color-h:focus {
+    color: #5b6fbe !important;
+    /* Slightly lighter blue for hover */
+}
+
+/* Panels and Highlights */
+.gjs-pn-active {
+    background-color: #1e2124 !important;
+    /* Slightly darker charcoal */
+    color: #7289da !important;
+    /* Blue text */
+}
+
+.gjs-pn-btn {
+    color: #7289da !important;
+    /* Blue */
+}
+
+.gjs-pn-btn:hover {
+    color: #ffffff !important;
+    /* Bright white text */
+}
+
+
+
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.app {
+    height: 100%;
+    width: 100%;
+}
+
+.sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+#gjs {
+    float: right;
+}
+
+.sidenav-collapse {
+    position: fixed !important;
+    width: 10% !important;
+    top: 0 !important;
+    height: 40px !important;
+    text-align: right;
+}
+
+.sidenav-collapse i {
+    margin-right: 5px;
+    margin-top: 5px;
+    padding-right: 5px;
+    padding-top: 5px;
+    font-size: 22px !important;
+    cursor: pointer;
+}
+
+.close {
+    width: 0% !important;
+    background-color: transparent !important;
+    /* position: absolute !important; */
+    z-index: 100;
+    padding-left: 5px !important;
+}
+
+.panel-button-resize {
+    left: 27px !important;
+    position: relative !important;
+}
+
+.resize {
+    width: 100% !important;
+    float: none;
+}
+
+
+.sidebar {
+    font-family: helvetica, sans-serif !important;
+    font-size: .85rem !important;
+    font-weight: normal !important;
+    position: fixed !important;
+    width: 10% !important;
+    height: 100vh !important;
+    left: 0 !important;
+    top: 40px !important;
+    overflow: auto !important;
+    scrollbar-width: none !important;
+    transition: 0.5s !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.add-page-btn {
+    display: flex !important;
+    margin-left: auto;
+    margin-right: auto;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 10px !important;
+    margin-bottom: 10px !important;
+    /* background-color: #4CAF50 !important; */
+    /* color: white !important; */
+    border: 1px solid rgba(0, 0, 0, .2);
+    border-radius: 5px !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 0 0 rgba(0, 0, 0, .15);
+    transition: all 0.2s ease 0s !important;
+    margin: 10px auto 5px;
+}
+
+.add-page-btn:hover {
+    box-shadow: 0 3px 4px 0 rgba(0, 0, 0, .15) !important;
+}
+
+#pages-ul {
+    list-style: none !important;
+    padding: 0 !important;
+}
+
+.page-item {
+    /* display: flex !important; */
+    /* align-items: center !important; */
+    /* justify-content: space-between !important; */
+    padding: 8px !important;
+    margin-bottom: 5px !important;
+    border-radius: 5px !important;
+    box-shadow: 0 1px 0 0 rgba(0, 0, 0, .15);
+    border: 1px solid rgba(0, 0, 0, .2);
+    transition: all .2s ease 0s;
+    margin: 10px 2.5% 5px;
+    padding: 1em !important;
+    /* text-align: center; */
+}
+
+.page-item:hover {
+    box-shadow: 0 3px 4px 0 rgba(0, 0, 0, .15) !important;
+}
+
+.page-item .page-name {
+    cursor: default;
+}
+
+.sidebar .hidden {
+    display: none;
+}
+
+.hidden {
+    display: none;
+}
+
+.project-name {
+    text-align: center;
+    cursor: default;
+    user-select: none;
+    /* For modern browsers */
+    -webkit-user-select: none;
+    /* For Safari */
+    -moz-user-select: none;
+    /* For Firefox */
+    -ms-user-select: none;
+    /* For Internet Explorer/Edge */
+}
+
+.sidebar .pages-collapse {
+    font-weight: lighter;
+    background-color: var(--gjs-secondary-dark-color);
+    letter-spacing: 1px !important;
+    padding: 9px 10px 9px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, .25);
+    text-align: left;
+    position: relative;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.edit-page-name {
+    display: inline-block;
+    width: 80%;
+    /* Ensures that the input is wide enough */
+    border: none !important;
+    padding: 5px !important;
+    font-size: 14px !important;
+    background-color: transparent;
+    /* Makes the background light gray for edit mode */
+    outline: none !important;
+    /* Removes the outline when focused */
+}
+
+/* Adjust when the contenteditable is active */
+.page-name[contenteditable="true"] {
+    outline: none;
+    /* Removes the default browser outline when in editing mode */
+}
+
+
+.sub-menu {
+    /* display: flex !important; */
+    /* align-items: center !important;
+    justify-content: space-between !important; */
+    display: none;
+    /* padding: 8px !important; */
+    /* padding: 1em !important; */
+    position: relative !important;
+    list-style: none;
+    margin: 10px 2.5% 5px !important;
+}
+
+.menu-item {
+    padding: 8px 20px;
+    cursor: pointer;
+    text-align: left;
+    margin-bottom: 5px !important;
+    border: 1px solid rgba(0, 0, 0, .2);
+    box-shadow: 0 1px 0 0 rgba(0, 0, 0, .15);
+    border-radius: 5px !important;
+    transition: all .2s ease 0s;
+}
+
+.menu-item:hover {
+    box-shadow: 0 3px 4px 0 rgba(0, 0, 0, .15) !important;
+}
+
+.sub-menu i {
+    cursor: pointer !important;
+    /* margin-left: 10px !important; */
+}
+
+
+
+
+/* Style for the sub-menu */
+.sub-menu {
+
+    left: 0;
+    top: 100%;
+    width: 100%;
+    z-index: 9999;
+    /* Ensure it's on top of other elements */
+    padding: 10px 0;
+}
+
+
+
+
+@keyframes slideDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+
+@keyframes slideUp {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+
+.sub-menu {
+    opacity: 0;
+}
+
+
+
+
+
+
+
+/* Initial Save Icon Style */
+.save-icon {
+    font-size: 18px !important;
+    transition: color 0.2s ease !important;
+}
+
+/* Loading Spinner Icon */
+.loading-icon {
+    animation: spin 1s linear infinite !important;
+    /* Spinner effect */
+    transition: color 0.2s ease !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+/* Success Checkmark Icon */
+.checkmark-icon {
+    color: #4caf50 !important;
+    /* Green checkmark for saved */
+    transition: color 0.2s ease !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+/* Spinner Animation */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+
+.active-dot {
+    width: 8px;
+    height: 8px;
+    background-color: white;
+    border-radius: 100%;
+    margin-left: 8px;
+    position: absolute;
+    right: 25px;
+    margin-top: 3%;
+    /* Position it on the rightmost side */
+}
+
+
+.logo {
+    font-size: 2em;
+    font-family: Helvetica, sans-serif;
+    /* left: 22vw; */
+    /* position: relative; */
+    margin-left: 20px;
+    cursor: default;
+    font-weight: bold;
+    user-select: none;
+    /* For modern browsers */
+    -webkit-user-select: none;
+    /* For Safari */
+    -moz-user-select: none;
+    /* For Firefox */
+    -ms-user-select: none;
+    /* For Internet Explorer/Edge */
+}

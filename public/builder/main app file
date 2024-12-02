@@ -1,0 +1,46 @@
+<h1>Your Projects</h1>
+
+@if ($projects->isEmpty())
+    <p>No projects found. Create your first project!</p>
+@else
+    <ul>
+        @foreach ($projects as $project)
+            <li>
+                <strong>{{ $project->project_name }}</strong>
+                <a href="/builder/{{ $project->project_id }}" target="_blank">Open Project</a>
+                <!-- <form action="{{ route('projects.destroy', $project->project_id) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" onclick="return confirm('Delete this project?')">Delete</button>
+                </form> -->
+            </li>
+        @endforeach
+    </ul>
+@endif
+
+<!-- <form id="create-project-form">
+    @csrf
+    <label for="project_name">Project Name:</label>
+    <input type="text" name="project_name" id="project_name" required>
+    <input type="hidden" name="project_json" id="project_json">
+    <button type="submit">Create Project</button>
+</form> -->
+
+<script>
+    document.getElementById('create-project-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const response = await fetch('{{ route('projects.store') }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+        });
+
+        const result = await response.json();
+        alert(result.message || 'Project saved!');
+        if (result.success) location.reload();
+    });
+</script>

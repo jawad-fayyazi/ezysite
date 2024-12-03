@@ -27,12 +27,12 @@ new class extends Component implements HasForms {
     {
         return $form
             ->schema([
-                    TextInput::make('name')
-                        ->required()
-                        ->maxLength(255),
-                    Textarea::make('description')
-                        ->maxLength(1000),
-                ])
+                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255),
+                Textarea::make('description')
+                    ->maxLength(1000),
+            ])
             ->statePath('data');
     }
 
@@ -61,15 +61,17 @@ new class extends Component implements HasForms {
 
 <x-layouts.app>
     @volt('websites.create')
-    <x-app.container class="max-w-xl">
-
-
-    <x-elements.back-button
-                class="max-w-full mx-auto mb-3"
-                text="Back to Websites"
-                :href="route('websites')"
-            />
-
+    <x-app.container>
+        <div class="container mx-auto my-6">
+        
+        <x-elements.back-button
+        class="max-w-full mx-auto mb-3"
+        text="Back to Websites"
+        :href="route('websites')"
+        />
+        
+        <!-- Box with background, padding, and shadow -->
+    <div class="bg-white p-6 rounded-lg shadow-lg">
 
         <div class="flex items-center justify-between mb-5">
             <x-app.heading title="Create Website" description="Fill out the form below to create a new website"
@@ -84,6 +86,8 @@ new class extends Component implements HasForms {
                 </x-button>
             </div>
         </form>
+    </div>
+    </div>
     </x-app.container>
     @endvolt
 </x-layouts.app>

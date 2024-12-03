@@ -31,8 +31,8 @@
 
                 <div class="flex flex-col justify-start items-center px-4 space-y-1.5 w-full h-full text-slate-600 dark:text-zinc-400">
                     <x-app.sidebar-link href="/dashboard" icon="phosphor-house" :active="Request::is('dashboard')">Dashboard</x-app.sidebar-link>
-<x-app.sidebar-dropdown text="Projects" icon="phosphor-stack" id="projects_dropdown" :active="(Request::is('projects'))" :open="(Request::is('project_a') || Request::is('project_b') || Request::is('project_c')) ? '1' : '0'">
-<x-app.sidebar-link :href="route('websites.create')" icon="phosphor-plus" :active="(Request::is('website/create'))">
+<x-app.sidebar-dropdown text="Websites" icon="phosphor-stack" id="projects_dropdown" :active="(Request::is('projects'))" :open="(Request::is('project_a') || Request::is('project_b') || Request::is('project_c')) ? '1' : '0'">
+<x-app.sidebar-link :href="route('websites.create')" icon="phosphor-plus" :active="(Request::is('websites/create'))">
     Create New Website
 </x-app.sidebar-link>
     
@@ -44,13 +44,18 @@
 
 @foreach(auth()->user()->projects as $project)
         <x-app.sidebar-link 
-            :href="route('project.details', ['project_id' => $project->project_id])" 
+            :href="route('websites.edit', ['project_id' => $project->project_id])" 
             icon="phosphor-cube" 
-            :active="(Request::is('project/details/'.$project->project_id))">
+            :active="(Request::is('websites/'.$project->project_id))">
             {{ $project->project_name }}
         </x-app.sidebar-link>
     @endforeach
 </x-app.sidebar-dropdown>
+
+
+    <x-app.sidebar-link :href="route('templates')" icon="phosphor-list" :active="Request::is('templates')">
+        Templates
+    </x-app.sidebar-link>
 
                     <x-app.sidebar-link onclick="event.preventDefault(); new FilamentNotification().title('Modify this button inside of sidebar.blade.php').send()" icon="phosphor-pencil-line" active="false">Stories</x-app.sidebar-link>
                     <x-app.sidebar-link  onclick="event.preventDefault(); new FilamentNotification().title('Modify this button inside of sidebar.blade.php').send()" icon="phosphor-users" active="false">Users</x-app.sidebar-link>

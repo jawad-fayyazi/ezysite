@@ -9,7 +9,7 @@
                 @else
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         @foreach($projects as $project)
-                            <a href="{{ route('project.details', $project->project_id) }}"
+                            <a href="{{ route('websites.{project_id}', ['project_id' => $project->project_id]) }}"
                                 class="block bg-gray-100 p-4 rounded-lg shadow transition-all duration-300"
                                 style="transform: scale(1); transition: transform 0.3s, box-shadow 0.3s;"
                                 onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0px 4px 20px rgba(0, 0, 0, 0.2)';"

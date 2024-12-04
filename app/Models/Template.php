@@ -12,6 +12,8 @@ class Template extends Model
 
     // The table associated with the model
     protected $table = 'templates';
+    protected $primaryKey = 'template_id'; // Define the primary key column name
+
 
     // The attributes that are mass assignable
     protected $fillable = [

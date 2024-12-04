@@ -27,8 +27,11 @@ new class extends Component {
                 <div class="flex items-center justify-between mb-5">
                     <x-app.heading title="All Template Categories" description="Browse templates by category"
                         :border="false" />
-                    <x-button tag="a" 
-                        :href="route('websites.create')">New Website</x-button>
+@if(Gate::allows('create-template')) <!-- Check if the user can create a template -->
+    <x-button tag="a" :href="route('templates.create')">New Template</x-button>
+@else
+    <x-button tag="a" :href="route('websites.create')">New Website</x-button>
+@endif
                 </div>
 
                 @if($categories->isEmpty())

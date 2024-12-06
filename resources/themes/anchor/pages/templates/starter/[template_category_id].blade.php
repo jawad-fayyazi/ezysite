@@ -2,20 +2,35 @@
 
 use Livewire\Volt\Component;
 use App\Models\Template;
+use App\Models\TemplateCategory; // Include TemplateCategory model
 use function Laravel\Folio\{middleware, name};
 
 middleware('auth'); // Ensure the user is authenticated
 name('templates.category'); // Name the route
 
 new class extends Component {
-    public $template_category; // Category name from URL
+    public $template_category_id; // Category ID from URL
+    public $category_name; // Category name 
     public $templates; // Templates in the category
 
-    public function mount($template_category): void
+    public function mount($template_category_id): void
     {
-        $this->template_category = $template_category; // Get the category name dynamically from the URL
+        $this->template_category_id = $template_category_id; // Get the category name dynamically from the URL
         // Fetch templates based on the category
-        $this->templates = Template::where('template_category', $this->template_category)->orderBy('template_id', 'desc')->get();
+        // Fetch the category name based on the ID
+        $category = TemplateCategory::find($this->template_category_id);
+
+        // Check if the category exists
+        if (!$category) {
+            abort(404); // If no category found, return 404
+        }
+
+        $this->category_name = $category->name; // Set the category name for display
+
+        // Fetch templates based on the category ID (template_category_id)
+        $this->templates = Template::where('template_category_id', $this->template_category_id)
+            ->orderBy('template_id', 'desc')
+            ->get();
     }
 };
 ?>
@@ -24,18 +39,21 @@ new class extends Component {
     @volt('templates.category')
     <x-app.container>
         <div class="container mx-auto my-6">
-            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Categories" :href="route('templates')" />
+            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Categories" :href="route('starter')" />
             <div class="bg-white p-6 rounded-lg shadow-lg">            
             <!-- Page Header -->
             <div class="flex items-center justify-between mb-5">
-                <x-app.heading title="Templates in {{ ucwords($template_category) }}"
-                    description="Browse all templates in the {{ ucwords($template_category) }} category." :border="false" />
-                    <x-button tag="a" :href="route('websites.create')">New Website</x-button>
+                <x-app.heading title="Starter Templates in {{ ucwords($category_name) }}"
+                    description="Browse all starter templates in the {{ ucwords($category_name) }} category." :border="false" />
+@if(Gate::allows('create-template')) <!-- Check if the user can create a template -->
+    <x-button tag="a" :href="route('templates.create')">New Template</x-button>
+@else
+    <x-button tag="a" :href="route('websites.create')">New Website</x-button>
+@endif
             </div>
-
-            <!-- Check if templates are empty -->
+            <!-- Check if there are no templates -->
             @if($templates->isEmpty())
-                <p class="text-gray-600">No templates found in this category. Try another category!</p>
+                <p class="text-gray-600">Looks like there are no Starter Templates in the "{{ ucwords($category_name) }}" category.</p>
             @else
                 <!-- Templates Grid -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -44,9 +62,9 @@ new class extends Component {
                         style="transform: scale(1); transition: transform 0.3s, box-shadow 0.3s;"
                         onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0px 4px 20px rgba(0, 0, 0, 0.2)';"
                         onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0px 4px 10px rgba(0, 0, 0, 0.1)';"
-                        onclick="window.location.href='/create/{{ $template->template_id }}';">
+                        onclick="window.location.href='create/{{ $template->template_id }}';">
                         <!-- Prevent Default Click on x-button -->
-                        <a href="/create/{{ $template->template_id }}" class="absolute inset-0 z-0"></a>
+                        <a href="create/{{ $template->template_id }}" class="absolute inset-0 z-0"></a>
 
                         <!-- Template Name -->
                         <div class="text-center">
@@ -55,7 +73,7 @@ new class extends Component {
 
                         <!-- Template Image -->
                         <div class="mt-4">
-                            <img src="{{ asset('templates_ss/screenshots/' . $template->template_image . '.png') }}" alt="{{ $template->template_name }}" alt="Template Image" class="w-full rounded-md shadow">
+                            <img src="{{ asset('storage/templates_ss/screenshots/' . $template->template_id . '.png') }}" alt="{{ $template->template_name }}" alt="Template Image" class="w-full rounded-md shadow">
                         </div>
 
                         <!-- Template Description -->
@@ -72,8 +90,6 @@ new class extends Component {
                         </div>
                     </div>
                 @endforeach
-
-
                 </div>
             @endif
             </div>

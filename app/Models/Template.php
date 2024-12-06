@@ -18,7 +18,7 @@ class Template extends Model
     // The attributes that are mass assignable
     protected $fillable = [
         'template_name',
-        'template_category',
+        'template_category_id',
         'template_description',
         'template_json',
         'template_image',
@@ -31,4 +31,9 @@ class Template extends Model
     // public function user() {
     //     return $this->belongsTo(User::class);
     // }
+
+    public function category()
+    {
+        return $this->belongsTo(TemplateCategory::class, 'template_category_id');
+    }
 }

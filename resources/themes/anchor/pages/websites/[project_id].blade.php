@@ -1,12 +1,14 @@
 <?php
 
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Livewire\Volt\Component;
 use App\Models\Project;
+use App\Models\PrivateTemplate;
 use function Laravel\Folio\{middleware, name};
 
 middleware('auth'); // Ensure the user is authenticated
@@ -31,8 +33,11 @@ new class extends Component implements HasForms {
         $this->form->fill([
             'rename' => $this->project->project_name,
             'domain' => $this->project->domain,
+            'description' => $this->project->description, // Pre-fill the description
+
         ]);
     }
+
 
     // Define the form schema
     public function form(Form $form): Form
@@ -47,9 +52,36 @@ new class extends Component implements HasForms {
                     ->label('Domain')
                     ->placeholder('New Domain Name')
                     ->maxLength(255),
+                Textarea::make('description')
+                    ->label('Description')
+                    ->placeholder('Add or update the project description')
+                    ->rows(5)
+                    ->maxLength(1000), // Limit description length
             ])
             ->statePath('data');
     }
+
+
+
+    // Save project as a private template
+    public function saveAsPrivateTemplate(): void
+    {
+        // Create a new private template based on the project
+        PrivateTemplate::create([
+            'template_name' => $this->project->project_name . ' (Created from My Websites)',
+            'description' => $this->project->description,
+            'template_json' => $this->project->project_json,
+            'user_id' => auth()->id(), // Associate with the logged-in user
+        ]);
+
+        Notification::make()
+            ->success()
+            ->title('Template created successfully')
+            ->send();
+
+        $this->redirect('/templates/my'); // Redirect to the user's private templates page
+    }
+
 
     // Edit the project details
     public function edit(): void
@@ -64,6 +96,11 @@ new class extends Component implements HasForms {
         // Update domain if provided
         if (!empty($data['domain'])) {
             $this->project->update(['domain' => $data['domain']]);
+        }
+
+        // Update description if provided
+        if (!empty($data['description'])) {
+            $this->project->update(['description' => $data['description']]);
         }
 
         Notification::make()
@@ -126,18 +163,45 @@ new class extends Component implements HasForms {
             <!-- Form Fields -->
             {{ $this->form }}
             <div class="flex justify-end gap-x-3">
-                <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
-                <x-button type="button" wire:click="duplicate" color="gray">
-                    Duplicate Website
+                <!-- Cancel Button -->
+                <x-button tag="a" href="/websites" color="secondary">
+                    Cancel
                 </x-button>
+            
+                <!-- Highlight the primary action -->
                 <x-button type="button" wire:click="edit" class="text-white bg-primary-600 hover:bg-primary-500">
                     Save Changes
                 </x-button>
-                <!-- Delete Button -->
-                <x-button type="button" wire:click="delete" color="danger">
-                    Delete Website
-                </x-button>
+            
+            <!-- Dropdown for additional actions -->
+            <x-dropdown class="text-gray-500">
+                <x-slot name="trigger">
+                    <x-button type="button" color="gray">
+                        More Actions
+                    </x-button>
+                </x-slot>
+            
+                <!-- Dropdown Items with Icons -->
+            
+                <!-- Duplicate Website -->
+                <a href="#" wire:click="duplicate" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                    <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Website
+                </a>
+            
+                <!-- Save as My Template -->
+                <a href="#" wire:click="saveAsPrivateTemplate"
+                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                    <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as My Template
+                </a>
+            
+                <!-- Delete Website -->
+                <a href="#" wire:click="delete" class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
+                    <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Website
+                </a>
+            </x-dropdown>
+
             </div>
+
             </form>
         </div>
     </div>

@@ -76,6 +76,12 @@ class User extends WaveUser
         return $this->hasMany(Project::class, 'user_id');
     }
 
-    
+
+    public function privateTemplates()
+    {
+        return $this->hasMany(PrivateTemplate::class); // User has many private templates
+    }
+
+
 
 }

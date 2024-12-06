@@ -29,9 +29,11 @@ new class extends Component implements HasForms {
             ->schema([
                 TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->label('Website Name'),
                 Textarea::make('description')
-                    ->maxLength(1000),
+                    ->maxLength(1000)
+                    ->label('Description'),
             ])
             ->statePath('data');
     }
@@ -81,7 +83,7 @@ new class extends Component implements HasForms {
             {{ $this->form }}
             <div class="flex justify-end gap-x-3">
                 <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
-                <x-button type="submit" class="text-white bg-primary-600 hover:bg-primary-500">
+                <x-button type="button" wire:click="create" class="text-white bg-primary-600 hover:bg-primary-500">
                     Create Website
                 </x-button>
             </div>

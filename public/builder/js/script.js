@@ -178,6 +178,8 @@ function renderPages() {
           <li class="menu-item delete-page gjs-one-bg gjs-two-color gjs-four-color-h" data-id="${
             page.id
           }">Delete</li>
+          <li class="menu-item set-main-page gjs-one-bg gjs-two-color gjs-four-color-h" data-id="${
+            page.id}">Set as Main Page</li>
         </ul>
       `;
       pageList.appendChild(li);
@@ -212,6 +214,43 @@ function renderPages() {
             subMenu.style.animation = ""; // Reset animation
           }, 200); // Match the duration of slide-up animation
         }
+      });
+
+      // Handle "Set as Main Page" click
+      const setMainPageBtn = li.querySelector(".set-main-page");
+      setMainPageBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent li click from triggering page selection
+        const pageId = page.id; // Assuming you store the page id in the data attribute
+        const webId = projectId; // Assuming website id is also stored
+
+        // Send a POST request to set the main page
+        fetch("/set-main-page", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": document
+              .querySelector('meta[name="csrf-token"]')
+              .getAttribute("content"), // CSRF Token
+          },
+          body: JSON.stringify({
+            page_id: pageId,
+            website_id: webId,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert("Main page updated successfully!");
+            } else {
+              alert("Error: " + data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while updating the main page.");
+          });
+
+        subMenu.style.display = "none"; // Close sub-menu after action
       });
 
       // Handle "EDIT" click
@@ -301,6 +340,36 @@ addPageBtn.addEventListener("click", () => {
   const newPage = pagesApi.add({
     name: `Page ${pagesApi.getAll().length + 1}`,
   });
+  console.log(newPage.id);
+
+  // Now send the new page data to the backend to update the database
+  const pageData = {
+    name: newPage.getName(), // Get the page's name
+    page_id: newPage.id, // Page Id
+    website_id: projectId, // Assuming you have a website_id field available
+  };
+
+  fetch("/pages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-TOKEN": document
+        .querySelector('meta[name="csrf-token"]')
+        .getAttribute("content"), // CSRF token
+    },
+    body: JSON.stringify(pageData),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        console.log("Page added successfully:", data.page);
+        renderPages(); // Update the list
+      } else {
+        console.error("Error adding page:", data.error);
+      }
+    })
+    .catch((error) => console.error("Error:", error));
+
   pagesApi.select(newPage.id); // Switch to the new page
   renderPages(); // Update the list
 });
@@ -378,287 +447,78 @@ editor.on("load", () => {
   }
 });
 
-// editor.Commands.add("liveContent", {
-//   run: function () {
-//     liveContent();
-//   },
-// });
 
-// // Event listener for live button click
-// function liveContent() {
-//   // Get HTML and CSS from GrapesJS editor
-//   const htmlContent = editor.getHtml();
-//   const cssContent = editor.getCss();
-
-//   // Combine HTML and CSS into one file
-//   const fullHtml = `<!DOCTYPE html>
-// <html lang="en">
-// <head>
-//     <meta charset="UTF-8">
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//     <title>Exported Page</title>
-//     <link href="styles.css" rel="stylesheet" />
-// </head>
-// <body>
-// ${htmlContent}
-// </body>
-// </html>`;
-
-//   // Create a zip file with JSZip
-//   const zip = new JSZip();
-//   zip.file("index.html", fullHtml); // Add the HTML file
-//   zip.file("styles.css", cssContent); // Add the CSS file
-
-//   // Generate the ZIP file as a Blob (Binary Large Object)
-//   zip
-//     .generateAsync({ type: "blob" })
-//     .then(function (blob) {
-//       // Once the ZIP file is ready, send it to your PHP server
-//       uploadToPHPServer(blob);
-//     })
-//     .catch(function (error) {
-//       console.error("Error generating the ZIP file:", error);
-//     });
-// }
-
-// // Function to send the ZIP file to PHP server
-// function uploadToPHPServer(blob) {
-//   const formData = new FormData();
-//   formData.append("file", blob, "site.zip");
-
-//   // Send the file to your PHP server (upload.php)
-//   fetch("live-content.php", {
-//     method: "POST",
-//     body: formData,
-//   })
-//     .then((response) => response.json())
-//     .then((data) => {
-//       console.log("Upload success:", data);
-//     })
-//     .catch((error) => {
-//       console.error("Upload failed:", error);
-//     });
-// }
-
-// editor.Commands.add("liveContent", {
-//   run(editor) {
-//     const pages = editor.Pages.getAll(); // Get all pages
-//     const zip = new JSZip(); // Initialize the ZIP file
-
-//     const fetchPageContent = (page) => {
-//       return new Promise((resolve) => {
-//         editor.Pages.select(page); // Switch to the page
-
-//         setTimeout(() => {
-//           const html = editor.getHtml(); // Get the HTML
-//           const css = editor.getCss(); // Get the CSS
-//           resolve({
-//             name: page.getName() || `Page-${page.id}`, // Use the page title or ID for file names
-//             html,
-//             css,
-//           });
-//         }, 200); // Add a delay to ensure proper page rendering
-//       });
-//     };
-
-//     const processPages = async () => {
-//       for (const page of pages) {
-//         const content = await fetchPageContent(page);
-
-//         // Add an HTML file for the page
-//         zip.file(
-//           `${page.getName()}.html`,
-//           `
-// <!DOCTYPE html>
-// <html lang="en">
-// <head>
-//     <meta charset="UTF-8">
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//     <title>${page.getName()}</title>
-//     <link rel="stylesheet" href="${page.getName()}.css">
-// </head>
-// <body>
-//     ${content.html}
-// </body>
-// </html>`
-//         );
-
-//         // Add a CSS file for the page
-//         zip.file(`${page.getName()}.css`, content.css);
-//       }
-
-//       // Generate the ZIP and trigger the download
-//       zip.generateAsync({ type: "blob" }).then((content) => {
-//         saveAs(content, "website.zip"); // Use FileSaver.js to trigger download
-//       });
-//     };
-
-//     processPages(); // Start processing the pages
-//   },
-// });
-
-// var htmlContent = editor.getHtml();
-// var cssContent = editor.getCss();
-
-// function deployWebsite() {
-//   // Make the AJAX request to PHP
-//   fetch("php/deploy_to_surge.php", {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify({
-//       html: "<h1 style='color: aqua;'>Hello World</h1>",
-//       css: cssContent,
-//     }),
-//   })
-//     .then((response) => response.json())
-//     .then((data) => {
-//       alert(data.message); // Show success or error message
-//     })
-//     .catch((error) => {
-//       console.error("Error:", error);
-//       alert("Deployment failed");
-//     });
-// }
-
-// semi final v
-
-// editor.Commands.add("liveContent", {
-//   run(editor) {
-//     const pages = editor.Pages.getAll(); // Get all pages
-//     const pageData = []; // Initialize an array to store page data
-
-//     const fetchPageContent = (page) => {
-//       return new Promise((resolve) => {
-//         editor.Pages.select(page); // Switch to the page
-
-//         setTimeout(() => {
-//           const html = editor.getHtml(); // Get the HTML
-//           const css = editor.getCss(); // Get the CSS
-//           resolve({
-//             name: page.getName() || `Page-${page.id}`, // Use the page title or ID for file names
-//             html,
-//             css,
-//           });
-//         }, 200); // Add a delay to ensure proper page rendering
-//       });
-//     };
-
-//     const processPages = async () => {
-//       for (const page of pages) {
-//         const content = await fetchPageContent(page);
-//         pageData.push(content); // Add page data to the array
-//       }
-
-//       // Now send the page data to the server using AJAX
-//       uploadToServer(pageData);
-//     };
-
-//     const uploadToServer = (pageData) => {
-//       const data = new FormData();
-//       data.append("pageData", JSON.stringify(pageData)); // Convert pageData to JSON string
-
-//       // Send data to PHP server (live-content.php)
-//       fetch("php/deploy_to_surge.php", {
-//         method: "POST",
-//         body: data,
-//       })
-//         .then((response) => response.json())
-//         .then((data) => {
-//           if (data.status === "success") {
-//             console.log("Files created successfully:", data.message);
-//           } else {
-//             console.error("Error:", data.message);
-//           }
-//         })
-//         .catch((error) => {
-//           console.error("Request failed:", error);
-//         });
-//     };
-
-//     processPages(); // Start processing the pages
-//   },
-// });
-
-// final working v of surge
-
-// editor.Commands.add("liveContent", {
-//   run(editor) {
-//     const pages = editor.Pages.getAll(); // Get all pages
-//     const pageData = []; // Initialize an array to store page data
-
-//     const fetchPageContent = (page) => {
-//       return new Promise((resolve) => {
-//         editor.Pages.select(page); // Switch to the page
-
-//         setTimeout(() => {
-//           const html = editor.getHtml(); // Get the HTML
-//           const css = editor.getCss(); // Get the CSS
-//           resolve({
-//             name: page.getName() || `Page-${page.id}`, // Use the page title or ID for file names
-//             html,
-//             css,
-//           });
-//         }, 200); // Add a delay to ensure proper page rendering
-//       });
-//     };
-
-//     const processPages = async () => {
-//       for (const page of pages) {
-//         const content = await fetchPageContent(page);
-//         pageData.push(content); // Add page data to the array
-//       }
-
-//       // Now send the page data to the server using AJAX
-//       uploadToServer(pageData);
-//     };
-
-//     const uploadToServer = (pageData) => {
-//       const data = new FormData();
-//       data.append("pageData", JSON.stringify(pageData)); // Convert pageData to JSON string
-
-//       // Send data to PHP server (live-content.php)
-//       fetch("php/deploy_to_surge.php", {
-//         method: "POST",
-//         body: data,
-//       })
-//         .then((response) => response.json())
-//         .then((data) => {
-//           if (data.status === "success") {
-//             console.log("Files created successfully:", data.message);
-//             alert("Success! Your website has been deployed: " + data.message);
-//           } else {
-//             console.error("Error:", data.message);
-//             alert("Error: " + data.message);
-//           }
-//         })
-//         .catch((error) => {
-//           console.error("Request failed:", error);
-//           alert(
-//             "Request failed. Please check your server or network connection."
-//           );
-//         });
-//     };
-
-//     processPages(); // Start processing the pages
-//   },
-// });
 
 editor.Commands.add("liveContent", {
   run(editor) {
     const pages = editor.Pages.getAll(); // Get all pages
     const zip = new JSZip(); // Initialize the ZIP file
+    const imageMap = new Map(); // To track already processed images
+
+    const extractImages = (htmlContent) => {
+      // Regular expression to match base64 encoded images in <img> src
+      const imgRegex =
+        /<img[^>]+src="data:image\/(png|jpeg|jpg|gif);base64,([^"]+)"/g;
+      const images = [];
+      let match;
+
+      while ((match = imgRegex.exec(htmlContent)) !== null) {
+        // match[2] contains the base64 string, match[1] is the image format (e.g., png)
+        images.push({ base64: match[2], format: match[1] });
+      }
+
+      return images;
+    };
+
+    const saveBase64Image = (base64Data, format, imageName) => {
+      // Convert base64 string to binary data and save it as a PNG (or the specified format)
+      const binary = atob(base64Data);
+      const len = binary.length;
+      const arrayBuffer = new ArrayBuffer(len);
+      const uintArray = new Uint8Array(arrayBuffer);
+
+      for (let i = 0; i < len; i++) {
+        uintArray[i] = binary.charCodeAt(i);
+      }
+
+      return new Blob([uintArray], { type: `image/${format}` }); // Create a Blob for the image
+    };
 
     const fetchPageContent = (page) => {
       return new Promise((resolve) => {
         editor.Pages.select(page); // Switch to the page
 
         setTimeout(() => {
-          const html = editor.getHtml(); // Get the HTML
+          let html = editor.getHtml(); // Get the HTML
           const css = editor.getCss(); // Get the CSS
+          const images = extractImages(html); // Extract base64 images
+
+          // Process images and add them to the ZIP
+          images.forEach((image, index) => {
+            const imageKey = `${image.format}:${image.base64}`; // Unique key for the image based on its content
+            let imageName = imageMap.get(imageKey);
+
+            if (!imageName) {
+              // If the image hasn't been processed yet, create a new image file name
+              imageName = `image-${Date.now()}-${index + 1}`;
+              const blob = saveBase64Image(
+                image.base64,
+                image.format,
+                imageName
+              );
+              zip.file(`${imageName}.${image.format}`, blob); // Save the image as PNG or JPG
+              imageMap.set(imageKey, imageName); // Save the image name to avoid duplicate images
+            }
+
+            // Update the <img> src in HTML to point to the new file in ZIP
+            html = html.replace(
+              `src="data:image/${image.format};base64,${image.base64}"`,
+              `src="${imageName}.${image.format}"`
+            );
+          });
+
           resolve({
-            name: page.getName() || `Page-${page.id}`, // Use the page title or ID for file names
+            name: page.getName() || `Page-${page.id}`,
             html,
             css,
           });
@@ -668,18 +528,24 @@ editor.Commands.add("liveContent", {
 
     const processPages = async () => {
       for (const page of pages) {
+        const isMainPage = await checkIfMainPage(page.id); // Fetch if the page is main from the DB
+
+        // Determine the file name
+        let pageName = isMainPage
+          ? "index"
+          : page.getName() || `Page-${page.id}`;
         const content = await fetchPageContent(page);
 
         // Add HTML content
         zip.file(
-          `${content.name}.html`,
+          `${pageName}.html`,
           `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${content.name}</title>
-    <link rel="stylesheet" href="${content.name}.css">
+    <link rel="stylesheet" href="${pageName}.css">
 </head>
 <body>
     ${content.html}
@@ -688,7 +554,7 @@ editor.Commands.add("liveContent", {
         );
 
         // Add CSS content
-        zip.file(`${content.name}.css`, content.css);
+        zip.file(`${pageName}.css`, content.css);
       }
 
       // Generate the ZIP file and send to PHP
@@ -701,32 +567,134 @@ editor.Commands.add("liveContent", {
       const formData = new FormData();
       formData.append("file", zipBlob, "website.zip"); // Append the zip file to the form data
 
-      // Send the file to the PHP server
-      fetch(`php/netlify_deploy.php?project_name=${projectName}`, {
+      // Replace `projectId` with the actual project ID
+      console.log(projectId);
+      // Send the file to the Laravel endpoint
+      fetch(`/deploy/${projectId}`, {
         method: "POST",
         body: formData,
+        headers: {
+          "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
+            .content, // Laravel CSRF token
+        },
       })
         .then((response) => response.json())
         .then((data) => {
-          // Log the response for debugging
-          console.log(data);
-
           // Check for success
           if (data.status === "success") {
-            // Only show one alert if deployment was successful
-            alert(`Website deployed successfully! Live at: ${data.url}`);
+            alert(`Website live at: ${data.domain}.test.wpengineers.com`);
           } else {
-            // Show alert if there was an error
-            alert(`Deployment failed: ${data.message}`);
+            alert(`Error: ${data.message}`);
           }
         })
         .catch((error) => {
-          // Log the error for debugging
           console.error("Request failed:", error);
-          alert("An error occurred while deploying the website.");
+          alert("An error occurred while uploading the files.");
         });
+    };
+
+    // Helper function to check if a page is marked as main in the database
+    const checkIfMainPage = async (pageId) => {
+      // Make an API call to check if the page is marked as the main page (assuming you have such a field in DB)
+      const response = await fetch(`/check-main-page/${pageId}`);
+      const data = await response.json();
+      return data.isMainPage; // Expected to return a boolean value (true if it's the main page, false otherwise)
     };
 
     processPages(); // Start processing the pages
   },
+});
+
+
+
+
+// // Wait until the editor is fully loaded
+// editor.on('load', function () {
+//   if (window.location.search.includes("screenshot=true")) {
+//       setTimeout(function () {
+//         iconBar.click();
+//         editor.runCommand("preview");
+//       }, 2000);
+//   }
+// });
+
+document.getElementById("test").addEventListener("click", function () {
+  // Step 1: Extract HTML and CSS from GrapesJS
+  const builderHTML = editor.getHtml(); // Replace `editor` with your GrapesJS editor instance
+  const builderCSS = editor.getCss();
+
+  // Step 2: Set desired size and aspect ratio
+  const targetWidth = 1280; // Example: Set width to 1280px
+  const aspectRatio = 9 / 16; // Example: Maintain 16:9 aspect ratio
+  const targetHeight = targetWidth * aspectRatio;
+
+  // Step 3: Create a temporary div to render the extracted content
+  const tempDiv = document.createElement("div");
+  tempDiv.id = "temporaryCaptureDiv";
+  tempDiv.style.position = "absolute";
+  tempDiv.style.top = "0";
+  tempDiv.style.left = "0";
+  tempDiv.style.width = `${targetWidth}px`; // Set the width for the content
+  tempDiv.style.height = `${targetHeight}px`; // Adjust height as needed
+  tempDiv.style.overflow = "hidden"; // Avoid overflow issues
+  tempDiv.style.backgroundColor = "#fff"; // Set background color to avoid transparency issues
+  tempDiv.style.zIndex = "-1"; // Hide from view
+
+  // Add the div to the body first
+  document.body.appendChild(tempDiv);
+
+  // Step 4: Create and append the full boilerplate HTML structure
+  const boilerplateHTML = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Temporary Capture</title>
+            <style>${builderCSS}</style> <!-- Add extracted CSS -->
+        </head>
+        <body>
+            ${builderHTML} <!-- Add extracted HTML -->
+        </body>
+        </html>
+    `;
+
+  // Inject boilerplate into the div
+  tempDiv.innerHTML = boilerplateHTML;
+
+  // Step 5: Ensure all images are loaded before capturing
+  const images = tempDiv.querySelectorAll("img");
+  const promises = Array.from(images).map((img) => {
+    return new Promise((resolve) => {
+      if (img.complete) {
+        resolve();
+      } else {
+        img.onload = img.onerror = resolve;
+      }
+    });
+  });
+
+  Promise.all(promises).then(() => {
+    // Step 6: Capture the content using html2canvas
+    html2canvas(tempDiv, {
+      width: targetWidth,
+      height: targetHeight,
+      scale: 1, // Adjust scaling to improve resolution
+    })
+      .then(function (canvas) {
+        const image = canvas.toDataURL("image/png");
+
+        // Trigger download
+        const link = document.createElement("a");
+        link.href = image;
+        link.download = "new_screenshot.png";
+        link.click();
+
+        // Clean up the temporary div
+        document.body.removeChild(tempDiv);
+      })
+      .catch(function (error) {
+        console.error("Error capturing screenshot:", error);
+      });
+  });
 });

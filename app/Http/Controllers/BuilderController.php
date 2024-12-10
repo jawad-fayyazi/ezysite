@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use Filament\Notifications\Notification;
 use App\Models\Project;
+use App\Models\WebPage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use ZipArchive;
 
 
 class BuilderController extends Controller
@@ -222,5 +226,153 @@ class BuilderController extends Controller
     }
 
 
+
+
+    public function deploy(Request $request, $project_id)
+    {
+
+        // Check if file is received
+        if (!$request->hasFile('file')) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No file uploaded',
+            ], 400);
+        }
+        
+        // Validate the uploaded file
+        $request->validate([
+            'file' => 'required|file|mimes:zip',
+        ]);
+        
+        // Fetch the project by ID and get the domain
+        $project = Project::find($project_id);
+
+        // If the project doesn't exist, return 404
+        if (!$project || $project->user_id != auth()->id()) {
+            return redirect()->route('dashboard')->with('error', 'Project not found.');
+        }
+
+        $domain = $project->domain;
+
+        if (!$domain) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Domain not configured for this project',
+            ], 400);
+        }
+
+        // Define the target directory
+        $targetDir = "/var/www/domain/{$domain}";
+
+        // Create the directory if it doesn't exist
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+
+        // Handle the uploaded ZIP file
+        $uploadedFile = $request->file('file');
+        $zipPath = $uploadedFile->getPathname();
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) === true) {
+            $zip->extractTo($targetDir); // Extract files to the target directory
+            $zip->close();
+
+            return response()->json([
+                'status' => 'success',
+                'domain' => $domain,
+            ]);
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to extract files',
+            ], 500);
+        }
+    }
+
+
+    public function pageSave(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'page_id' => 'required|string|max:255',
+            'website_id' => 'required|integer|exists:projects_data,project_id',  // Ensure the website_id is valid
+        ]);
+
+        try {
+            // Create the new page
+            $page = WebPage::create([
+                'name' => $request->name,
+                'page_id' => $request->page_id,
+                'website_id' => $request->website_id,
+                'main' => 0,  // Default is 0, as it won't be the main page initially
+                'title' => $request->name ?? '',
+            ]);
+
+            return response()->json(['success' => true, 'page' => $page]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+
+    public function setMainPage(Request $request)
+    {
+        // Validate the input data
+        $validated = $request->validate([
+            'page_id' => 'required|string',
+            'website_id' => 'required|integer',
+        ]);
+
+        try {
+            // Fetch the project to ensure the user owns it
+            $project = Project::where('project_id', $request->website_id)
+                ->where('user_id', auth()->id())
+                ->first();
+
+            // If the project doesn't exist or user does not own it, return an error
+            if (!$project) {
+                return response()->json(['success' => false, 'error' => 'Project not found or unauthorized.']);
+            }
+
+            // Fetch the specific page from the 'web_pages' table
+            $page = WebPage::where('page_id', $request->page_id)
+                ->where('website_id', $request->website_id)
+                ->first();
+
+            // If the page is not found, return an error
+            if (!$page) {
+                return response()->json(['success' => false, 'error' => 'Page not found.']);
+            }
+
+            // Reset all pages of this website to not be the main page
+            WebPage::where('website_id', $request->website_id)->update(['main' => 0]);
+
+            // Set the selected page as the main page
+            $page->main = 1;
+            $page->save();
+
+            return response()->json(['success' => true, 'message' => 'Main page updated successfully!']);
+        } catch (\Exception $e) {
+            // Handle any exceptions and return the error message
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+
+
+    public function checkMainPage($pageId)
+    {
+        // Fetch the page by ID
+        $page = WebPage::where('page_id', $pageId);
+
+        // If the page is not found, return an error response
+        if (!$page) {
+            return response()->json(['message' => 'Page not found'], 404);
+        }
+
+        // Check if the 'main' column is set to 1 (indicating it's the main page)
+        return response()->json(['isMainPage' => $page->main == 1]);
+    }
 
 }

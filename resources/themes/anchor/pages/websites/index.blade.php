@@ -11,6 +11,19 @@ new class extends Component {
     public function mount()
     {
         $this->projects = auth()->user()->projects()->orderBy('project_id', 'desc')->get();
+        // Generate placeholder initials for each project
+        foreach ($this->projects as $project) {
+            // Remove special characters and split the name
+            $cleanedName = preg_replace('/[^\w\s]/', '', $project->project_name); // Keep only alphanumeric and spaces
+            $words = explode(' ', trim($cleanedName));
+
+            // Get first letter of the first word and last word, if available
+            $firstLetter = isset($words[0]) ? substr($words[0], 0, 1) : '';
+            $lastLetter = isset($words[count($words) - 1]) ? substr($words[count($words) - 1], 0, 1) : '';
+
+            // Combine initials, default to "NA" if no valid characters
+            $project->placeholder_text = strtoupper($firstLetter . $lastLetter) ?: 'NA';
+        }
     }
 
 }
@@ -49,7 +62,7 @@ new class extends Component {
                                 </div>
                                 <div class="mt-4">
                                     <!-- Placeholder Image -->
-                                    <img src="https://placehold.co/300x200" alt="Website Image"
+                                    <img src="https://placehold.co/300x200?text={{ $project->placeholder_text }}" alt="Website Image"
                                         class="w-full rounded-md shadow">
                                 </div>
                                 <p class="mt-4 text-sm text-gray-500">

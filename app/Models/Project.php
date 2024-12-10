@@ -19,7 +19,9 @@ class Project extends Model
         'project_name', // project_name should be fillable
         'project_json', // project_json should also be fillable to update it
         'user_id',
+        'domain',
         'description',
+        'mainpageid',
     ];
 
     // Cast the project_json column to an array

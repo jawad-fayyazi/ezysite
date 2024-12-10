@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" id="application">
 
 <head>
     <!-- Meta Tags for SEO and responsiveness -->
@@ -28,7 +28,7 @@
         </div>
 
         <div id="side-bar-collpase" class="sidebar gjs-one-bg gjs-two-color">
-            <h1 class="project-name">{{ $project_name }}</h1> <!-- Display project name -->
+            <h1 class="project-name" id="test">{{ $project_name }}</h1> <!-- Display project name -->            
             <div class="pages-collapse">
                 <i class="fa-solid fa-caret-down"></i> Pages
             </div>
@@ -66,6 +66,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
 
     <script>
         // Pass PHP variables to JavaScript

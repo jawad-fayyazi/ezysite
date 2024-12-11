@@ -21,7 +21,10 @@ class Project extends Model
         'user_id',
         'domain',
         'description',
-        'mainpageid',
+        'live',
+        'robots_txt',
+        'header_embed',
+        'footer_embed',
     ];
 
     // Cast the project_json column to an array

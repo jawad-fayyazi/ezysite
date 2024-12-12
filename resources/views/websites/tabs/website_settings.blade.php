@@ -11,21 +11,18 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Component;
 use App\Models\Project;
 use App\Models\PrivateTemplate;
-use App\Models\WebPage; // Assuming you have the WebPage model
 use function Laravel\Folio\{middleware, name};
 
 middleware('auth'); // Ensure the user is authenticated
-name('websites.edit'); // Name the route
+name('websites.tabs.website_settings'); // Name the route
 
 new class extends Component implements HasForms {
     use InteractsWithForms;
 
-    public $selectedPage = null;
     public $project_id; // The project_id from the URL
     public Project $project;  // Holds the project instance
     public ?array $data = []; // Holds form data
-    public $activeTab = 'overview'; // Active tab (default: overview)
-    public $pages;
+
 
 
     // Mount method to set the project_id from the URL and fetch the project
@@ -35,10 +32,6 @@ new class extends Component implements HasForms {
 
         // Retrieve the project using the project_id and authenticate it
         $this->project = auth()->user()->projects()->where('project_id', $this->project_id)->firstOrFail();
-
-        // Retrieve pages for the project
-        $this->pages = WebPage::where('website_id', $this->project_id)->get();
-
 
         // Pre-fill the form with existing project data
         $this->form->fill([
@@ -197,89 +190,46 @@ new class extends Component implements HasForms {
 }
 ?>
 
-<x-layouts.app>
-    @volt('websites.edit')
-    <x-app.container>
-    <div class="container mx-auto my-6">
-    <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Websites" :href="route('websites')" />
 
-        <!-- Box with background, padding, and shadow -->    
-    <div class="bg-white p-6 rounded-lg shadow-lg">
-        <div class="flex items-center justify-between mb-5">
-            <!-- Display the current project name as a heading -->
-            <x-app.heading title="Website: {{ $this->project->project_name }}"
-                description="Manage your website's details and settings." :border="false" />
+@volt('websites.tabs.webistes_settings')
+    <form wire:submit="edit" class="space-y-6">
+        <h2 class="text-2xl font-semibold">Website Settings</h2>
 
-<div class="relative"
-    style="width: 250px; height: 141px; overflow: hidden; border: 1px solid #ccc; border-radius: 8px;">
-    <!-- GrapesJS Builder Embedded in an iframe with scaling -->
-    <iframe
-        src="{{ route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name]) }}"
-        class="absolute inset-0 w-full h-full pointer-events-none"
-        style="border: none; transform: scale(0.2); transform-origin: top left; width: 1250px; height: 750px;">
-    </iframe>
+        <!-- Render the form fields here -->
+        {{ $this->form }}
 
-<!-- Transparent Overlay with Hover Effect -->
-<a href="{{ route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name]) }}"
-    target="_blank" class="absolute inset-0 bg-transparent flex items-center justify-center group cursor-pointer">
+        <div class="flex justify-end gap-x-3">
+            <!-- Cancel Button -->
+            <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
 
-    <!-- Transparent background and hover effect -->
-    <div
-        class="flex absolute top-0 left-0 w-full h-full flex items-center justify-center">
-        <!-- Pencil Icon from Phosphor Icons -->
-        <x-icon name="phosphor-pencil" class="w-6 h-6" />
-    </div>
+            <!-- Save Changes Button -->
+            <x-button type="button" wire:click="edit" class="text-white bg-primary-600 hover:bg-primary-500">Save
+                Changes</x-button>
 
-</a>
+            <!-- Dropdown for More Actions -->
+            <x-dropdown class="text-gray-500">
+                <x-slot name="trigger">
+                    <x-button type="button" color="gray">More Actions</x-button>
+                </x-slot>
 
-</div>
+                <!-- Duplicate Website -->
+                <a href="#" wire:click="duplicate"
+                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                    <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Website
+                </a>
 
+                <!-- Save as My Template -->
+                <a href="#" wire:click="saveAsPrivateTemplate"
+                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                    <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as My Template
+                </a>
 
+                <!-- Delete Website -->
+                <a href="#" wire:click="delete"
+                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
+                    <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Website
+                </a>
+            </x-dropdown>
         </div>
-
-
-
-        <!-- Tabs Navigation -->
-        <div class="mb-6 border-b border-gray-200">
-            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
-                <li class="mr-2">
-                    <a wire:click="$set('activeTab', 'overview')" href="#"
-                        class="inline-block p-4 rounded-t-lg {{ $activeTab === 'overview' ? 'border-b-2 border-blue-500' : '' }}">Overview</a>
-                </li>
-                <li class="mr-2">
-                    <a wire:click="$set('activeTab', 'headerFooter')" href="#"
-                        class="inline-block p-4 rounded-t-lg {{ $activeTab === 'headerFooter' ? 'border-b-2 border-blue-500' : '' }}">Header/Footer</a>
-                </li>
-                <li class="mr-2">
-                    <a wire:click="$set('activeTab', 'pages')" href="#"
-                        class="inline-block p-4 rounded-t-lg {{ $activeTab === 'pages' ? 'border-b-2 border-blue-500' : '' }}">Pages</a>
-                </li>
-                <li class="mr-2">
-                    <a wire:click="$set('activeTab', 'website_settings')" href="#"
-                        class="inline-block p-4 rounded-t-lg {{ $activeTab === 'website_settings' ? 'border-b-2 border-blue-500' : '' }}">Website Settings</a>
-                </li>
-                <li class="mr-2">
-                    <a wire:click="$set('activeTab', 'live_settings')" href="#"
-                        class="inline-block p-4 rounded-t-lg {{ $activeTab === 'live_settings' ? 'border-b-2 border-blue-500' : '' }}">Live Settings</a>
-                </li>
-            </ul>
-        </div>
-
-
-            <!-- Overview Tab Content -->
-            @if ($activeTab === 'overview')
-                @include('websites.tabs.overview')
-            @elseif ($activeTab === 'website_settings')
-
-                @include('websites.tabs.website_settings')
-
-            @elseif ($activeTab === 'pages')
-            @include('websites.tabs.pages_settings')
-            @elseif ($activeTab === 'headerFooter')
-                <p>Header/Footer Content Goes Here.</p>
-            @endif
-        </div>
-    </div>
-    </x-app.container>
-    @endvolt
-</x-layouts.app>
+    </form>
+@endvolt

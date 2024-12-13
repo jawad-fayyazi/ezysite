@@ -19,14 +19,14 @@ name('websites.tabs.website_settings'); // Name the route
 new class extends Component implements HasForms {
     use InteractsWithForms;
 
-    public $project_id; // The project_id from the URL
+    public $project_id = 135; // The project_id from the URL
     public Project $project;  // Holds the project instance
     public ?array $data = []; // Holds form data
 
 
 
     // Mount method to set the project_id from the URL and fetch the project
-    public function mount($project_id): void
+    public function mount($project_id = 135): void
     {
         $this->project_id = $project_id; // Set the project_id dynamically from the URL
 
@@ -44,53 +44,65 @@ new class extends Component implements HasForms {
     }
 
 
-    // Define the form schema
     public function form(Form $form): Form
     {
-        if(1==1) {
-        return $form
-            ->schema([
-                // Rename Website Field
-                TextInput::make('rename')
-                    ->label('Website Name')
-                    ->placeholder('Enter Website Name')
-                    ->maxLength(255),
+        // Check which tab is selected
+        if (4 == 3) {
+            return $form
+                ->schema([
+                    // Rename Website Field
+                    TextInput::make('rename')
+                        ->label('Website Name')
+                        ->placeholder('Enter Website Name')
+                        ->maxLength(255),
 
-                // Description Textarea
-                Textarea::make('description')
-                    ->label('Description')
-                    ->placeholder('Describe your website')
-                    ->rows(5)
-                    ->maxLength(1000),
+                    // Description Textarea
+                    Textarea::make('description')
+                        ->label('Description')
+                        ->placeholder('Describe your website')
+                        ->rows(5)
+                        ->maxLength(1000),
 
-                // Logo Uploader
-                FileUpload::make('logo')
-                    ->label('Upload Logo')
-                    ->image()
-                    ->directory("usersites/{$this->project->project_id}")
-                    ->disk('public')
-                    ->maxSize(1024)
-                    ->helperText('Upload a logo for your website'),
+                    // Logo Uploader
+                    FileUpload::make('logo')
+                        ->label('Upload Logo')
+                        ->image()
+                        ->directory("usersites/{$this->project->project_id}")
+                        ->disk('public')
+                        ->maxSize(1024)
+                        ->helperText('Upload a logo for your website'),
 
-                // Robots.txt Textarea
-                Textarea::make('robots_txt')
-                    ->label('Edit Robots.txt')
-                    ->placeholder('Add or modify the Robots.txt content')
-                    ->rows(5),
+                    // Robots.txt Textarea
+                    Textarea::make('robots_txt')
+                        ->label('Edit Robots.txt')
+                        ->placeholder('Add or modify the Robots.txt content')
+                        ->rows(5),
 
-                // Embed Code for Header
-                Textarea::make('header_embed')
-                    ->label('Embed Code in Header')
-                    ->placeholder('Add custom embed code for the header')
-                    ->rows(5),
+                    // Embed Code for Header
+                    Textarea::make('header_embed')
+                        ->label('Embed Code in Header')
+                        ->placeholder('Add custom embed code for the header')
+                        ->rows(5),
 
-                // Embed Code for Footer
-                Textarea::make('footer_embed')
-                    ->label('Embed Code in Footer')
-                    ->placeholder('Add custom embed code for the footer')
-                    ->rows(5),
-            ])
-            ->statePath('data');
+                    // Embed Code for Footer
+                    Textarea::make('footer_embed')
+                        ->label('Embed Code in Footer')
+                        ->placeholder('Add custom embed code for the footer')
+                        ->rows(5),
+                ])
+                ->statePath('data');
+        }
+
+        // You can add more conditions for other tabs here, for example:
+        if (1 == 1) {
+            return $form
+                ->schema([
+                    // Only some fields for this tab
+                    TextInput::make('rename')
+                        ->label('Website Name')
+                        ->placeholder('Enter Website Name')
+                        ->maxLength(255),
+                ]);
         }
     }
 
@@ -194,45 +206,44 @@ new class extends Component implements HasForms {
 
 
 @volt('websites.tabs.webistes_settings')
-    <form wire:submit="edit" class="space-y-6">
-        <h2 class="text-2xl font-semibold">Website Settings</h2>
+<form wire:submit="edit" class="space-y-6">
+    <h2 class="text-2xl font-semibold">Website Settings</h2>
 
-        <!-- Render the form fields here -->
-        {{ $this->form }}
-        <p>{{$activeTab}}</p>
+    <!-- Render the form fields here -->
+    {{ $this->form }}
+ 
 
-        <div class="flex justify-end gap-x-3">
-            <!-- Cancel Button -->
-            <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
+    <div class="flex justify-end gap-x-3">
+        <!-- Cancel Button -->
+        <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
 
-            <!-- Save Changes Button -->
-            <x-button type="button" wire:click="edit" class="text-white bg-primary-600 hover:bg-primary-500">Save
-                Changes</x-button>
+        <!-- Save Changes Button -->
+        <x-button type="button" wire:click="edit" class="text-white bg-primary-600 hover:bg-primary-500">Save
+            Changes</x-button>
 
-            <!-- Dropdown for More Actions -->
-            <x-dropdown class="text-gray-500">
-                <x-slot name="trigger">
-                    <x-button type="button" color="gray">More Actions</x-button>
-                </x-slot>
+        <!-- Dropdown for More Actions -->
+        <x-dropdown class="text-gray-500">
+            <x-slot name="trigger">
+                <x-button type="button" color="gray">More Actions</x-button>
+            </x-slot>
 
-                <!-- Duplicate Website -->
-                <a href="#" wire:click="duplicate"
-                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
-                    <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Website
-                </a>
+            <!-- Duplicate Website -->
+            <a href="#" wire:click="duplicate"
+                class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Website
+            </a>
 
-                <!-- Save as My Template -->
-                <a href="#" wire:click="saveAsPrivateTemplate"
-                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
-                    <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as My Template
-                </a>
+            <!-- Save as My Template -->
+            <a href="#" wire:click="saveAsPrivateTemplate"
+                class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as My Template
+            </a>
 
-                <!-- Delete Website -->
-                <a href="#" wire:click="delete"
-                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
-                    <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Website
-                </a>
-            </x-dropdown>
-        </div>
-    </form>
+            <!-- Delete Website -->
+            <a href="#" wire:click="delete" class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
+                <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Website
+            </a>
+        </x-dropdown>
+    </div>
+</form>
 @endvolt

@@ -26,7 +26,7 @@ new class extends Component implements HasForms {
     public ?array $data = []; // Holds form data
     public $activeTab = 'overview'; // Active tab (default: overview)
     public $pages;
-    public ?array $pageData = []; // Pages form data
+    public $pageData = [];
 
 
     // Mount method to set the project_id from the URL and fetch the project
@@ -40,6 +40,18 @@ new class extends Component implements HasForms {
         // Retrieve pages for the project
         $this->pages = WebPage::where('website_id', $this->project_id)->get();
 
+        // Pre-fill the form with existing page data
+        foreach ($this->pages as $page) {
+            $this->pageData[$page->id] = [
+                'page_name' => $page->name,
+                'page_title' => $page->title,
+                'meta_description' => $page->meta_description,
+                'og_tags' => $page->og_tags,
+                'header_embed_code' => $page->header_embed_code,
+                'footer_embed_code' => $page->footer_embed_code,
+            ];
+        }
+        ;
 
         // Pre-fill the form with existing project data
         $this->form->fill([
@@ -80,7 +92,8 @@ new class extends Component implements HasForms {
     }
 
 
-    public function pagesSetForm(){
+    public function pagesSetForm()
+    {
         $this->activeTab = "pages";
     }
 
@@ -272,20 +285,27 @@ new class extends Component implements HasForms {
     }
 
 
+    public function check()
+    {
+        dd($this->pageData);
+    }
+
 
     // Update the page data
-    public function pageUpdate()
+    public function pageUpdate($pageId)
     {
-        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
-        if ($pageInstance) {
+        $page = WebPage::find($pageId);
+        if ($page) {
+            $data = $this->pageData[$pageId];
+
             // Update the selected page's data
 
-            $pageInstance->update([
-                'title' => $this->pageData['page_title'],
-                'meta_description' => $this->pageData['page_meta_description'],
-                'og' => $this->pageData['page_og_tags'],
-                'embed_code_start' => $this->pageData['page_header_embed_code'],
-                'embed_code_end' => $this->pageData['page_footer_embed_code'],
+            $page->update([
+                'title' => $data['page_title'],
+                'meta_description' => $data['meta_description'],
+                'og' => $data['og_tags'],
+                'embed_code_start' => $data['header_embed_code'],
+                'embed_code_end' => $data['footer_embed_code'],
             ]);
 
             Notification::make()->success()->title('Page data updated successfully.')->send();
@@ -350,7 +370,7 @@ new class extends Component implements HasForms {
                                 class="tab-btn inline-block p-4 rounded-t-lg" data-tab="header-footer">Header/Footer</a>
                         </li>
                         <li class="mr-2">
-                            <a wire:click="pagesSetForm" href="#pages"
+                            <a href="#pages"
                                 class="tab-btn inline-block p-4 rounded-t-lg" data-tab="pages">Pages</a>
                         </li>
                         <li class="mr-2">
@@ -452,37 +472,83 @@ new class extends Component implements HasForms {
                     <div id="pages" class="hidden tab-panel">
                                         <h2 class="text-lg font-semibold mb-4">Pages Meta Data</h2>
                                         <div class="space-y-4 mt-4">
-                                            @foreach($this->pages as $page)
-                                                <div class="bg-white p-6 rounded-md shadow-md">
-                                                    <!-- Page Title with toggle -->
-                                                    <div class="flex justify-between items-center">
-                                                        <button wire:click="updatePageList({{ $page->id }})"
-                                                            class="text-lg font-semibold text-left w-full">
-                                                            {{ $page->name }}
-                                                        </button>
-                                                    </div>
+@foreach($this->pages as $page)
+    <div class="bg-white p-6 rounded-md shadow-md">
+        <div class="flex justify-between items-center">
+            <button type="button" class="text-lg font-semibold text-left w-full toggle-page"
+                data-page-id="{{ $page->id }}">
+                {{ $page->name }}
+            </button>
+        </div>
 
-                                                    <!-- Page Settings (Only show if selectedPage matches the page ID) -->
-                                                    @if ($selectedPage === $page->id)
-                                                                    <div class="mt-4">
-                                                                        <div class="space-y-3">
-                                                                        {{$this->form}}
-                                                            <div class="flex justify-end gap-x-3">
-                                                            <!-- Cancel Button -->
-                                                            <x-button tag="button" wire:click="updatePageList({{ $page->id }})" color="secondary">Cancel</x-button>
+        <div class="collapse-content mt-4" id="page-{{ $page->id }}" style="display: none;">
+            <div class="space-y-3">
+                <div class="space-y-6 bg-white p-6 rounded-lg shadow">
+                    <!-- Page Name (Read-only) -->
+                    <div class="form-group">
+                        <label for="page_name_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Page Name</label>
+                        <input type="text" id="page_name_{{ $page->id }}" 
 
-                                                            <!-- Save Changes Button -->
-                                                            <x-button type="button" wire:click="pageUpdate"
-                                                                class="text-white bg-primary-600 hover:bg-primary-500">Save
-                                                                Changes</x-button>
-                                                            <x-button type="button" wire:click="pageMain" class="text-white bg-primary-600 hover:bg-primary-500">Set as Main Page</x-button>
+                            wire:model="pageData.{{$page->id}}.page_name" 
+                            readonly
+                            class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+                    </div>
 
-                                                        </div>
-                                                                        </div>
-                                                                    </div>
-                                                    @endif
-                                                </div>
-                                            @endforeach
+                    <!-- Page Title -->
+                    <div class="form-group">
+                        <label for="page_title_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Page Title</label>
+                        <input type="text" id="page_title_{{ $page->id }}" 
+
+                            wire:model="pageData.{{$page->id}}.page_title" 
+                            class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+                    </div>
+
+                    <!-- Meta Description -->
+                    <div class="form-group">
+                        <label for="page_meta_description_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Meta Description</label>
+                        <textarea id="page_meta_description_{{ $page->id }}" 
+                            wire:model="pageData.{{$page->id}}.meta_description" 
+                            rows="3" class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+
+                        </textarea>
+                    </div>
+
+                    <!-- Open Graph Tags -->
+                    <div class="form-group">
+                        <label for="page_og_tags_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Open Graph Tags</label>
+                        <textarea id="page_og_tags_{{ $page->id }}" 
+                            wire:model="pageData.{{$page->id}}.og_tags" 
+                            rows="3" class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+                        </textarea>
+                    </div>
+
+                    <!-- Header Embed Code -->
+                    <div class="form-group">
+                        <label for="page_header_embed_code_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Header Embed Code</label>
+                        <textarea id="page_header_embed_code_{{ $page->id }}" 
+                            wire:model="pageData.{{$page->id}}.header_embed_code" 
+                            rows="3" class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+                        </textarea>
+                    </div>
+
+                    <!-- Footer Embed Code -->
+                    <div class="form-group">
+                        <label for="page_footer_embed_code_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Footer Embed Code</label>
+                        <textarea id="page_footer_embed_code_{{ $page->id }}" 
+                            wire:model="pageData.{{$page->id}}.footer_embed_code" 
+                            rows="3" class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+                        </textarea>
+                    </div>
+
+                    <!-- Save Changes Button -->
+                    <x-button type="button" wire:click="pageUpdate({{ $page->id }})"
+                        class="text-white bg-primary-600 hover:bg-primary-500">Save Changes</x-button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endforeach
+
                                         </div>
                     </div>
 
@@ -521,9 +587,23 @@ new class extends Component implements HasForms {
 
                 // Add active class to the clicked tab
                 tab.classList.add("border-b-2", "border-blue-500");
-            }, 500);
+            }, 0);
         });
+
+        // Optional: Show the first tab by default
+        tabs[0].click();
     })
+
+
+
+    const toggleButtons = document.querySelectorAll('.toggle-page');
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const pageId = this.getAttribute('data-page-id');
+                const content = document.getElementById('page-' + pageId);
+                content.style.display = content.style.display === 'none' ? 'block' : 'none';
+            });
+        });
 </script>
 @endscript
 

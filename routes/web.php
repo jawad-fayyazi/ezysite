@@ -58,8 +58,12 @@ Route::post('/projects/{project_id}/duplicate', [BuilderController::class, 'dupl
 
 Route::post('/deploy/{project_id}', [BuilderController::class, 'deploy']);
 
-Route::post('/set-main-page', [BuilderController::class, 'setMainPage']);
 
 Route::post('/pages', [BuilderController::class, 'pageSave'])->name('pages.store');
 
-Route::get('/check-main-page/{pageId}', [BuilderController::class, 'checkMainPage']);
+Route::delete('/pages/{id}', [BuilderController::class, 'pageDelete']);
+
+Route::post('/pages/rename/{id}', [BuilderController::class, 'pageRename']);
+
+
+Route::post('/pages/data', [BuilderController::class, 'pageHtmlCss']);

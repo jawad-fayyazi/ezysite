@@ -32,6 +32,8 @@ class WebPage extends Model
         'embed_code_end',
         'embed_code_start',
         'website_id',
+        'html',
+        'css',
     ];
 
     /**

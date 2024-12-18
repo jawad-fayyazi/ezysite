@@ -300,13 +300,22 @@ class BuilderController extends Controller
         ]);
 
         try {
+            // Fetch the project from the database using the project_id
+        $project = Project::find($request->website_id);
+
+        // If the project doesn't exist, return 404
+        if (!$project || $project->user_id != auth()->id()) {
+            abort(404); // Prevent unauthorized access to other user's projects
+        }
             // Create the new page
             $page = WebPage::create([
                 'name' => $request->name,
                 'page_id' => $request->page_id,
                 'website_id' => $request->website_id,
                 'main' => 0,  // Default is 0, as it won't be the main page initially
-                'title' => $request->name ?? '',
+                'title' => $request->name . " - " . $project->project_name,
+                'html' => '<body></body>',
+                'css' => '* { box-sizing: border-box; } body {margin: 0;}',
             ]);
 
             return response()->json(['success' => true, 'page' => $page]);
@@ -315,64 +324,63 @@ class BuilderController extends Controller
         }
     }
 
-
-    public function setMainPage(Request $request)
+    public function pageDelete($id)
     {
-        // Validate the input data
-        $validated = $request->validate([
-            'page_id' => 'required|string',
-            'website_id' => 'required|integer',
-        ]);
+        // Find the page by ID
+        $page = WebPage::where('page_id', $id);
 
-        try {
-            // Fetch the project to ensure the user owns it
-            $project = Project::where('project_id', $request->website_id)
-                ->where('user_id', auth()->id())
-                ->first();
-
-            // If the project doesn't exist or user does not own it, return an error
-            if (!$project) {
-                return response()->json(['success' => false, 'error' => 'Project not found or unauthorized.']);
-            }
-
-            // Fetch the specific page from the 'web_pages' table
-            $page = WebPage::where('page_id', $request->page_id)
-                ->where('website_id', $request->website_id)
-                ->first();
-
-            // If the page is not found, return an error
-            if (!$page) {
-                return response()->json(['success' => false, 'error' => 'Page not found.']);
-            }
-
-            // Reset all pages of this website to not be the main page
-            WebPage::where('website_id', $request->website_id)->update(['main' => 0]);
-
-            // Set the selected page as the main page
-            $page->main = 1;
-            $page->save();
-
-            return response()->json(['success' => true, 'message' => 'Main page updated successfully!']);
-        } catch (\Exception $e) {
-            // Handle any exceptions and return the error message
-            return response()->json(['success' => false, 'error' => $e->getMessage()]);
-        }
-    }
-
-
-
-    public function checkMainPage($pageId)
-    {
-        // Fetch the page by ID
-        $page = WebPage::where('page_id', $pageId);
-
-        // If the page is not found, return an error response
+        // Check if page exists
         if (!$page) {
-            return response()->json(['message' => 'Page not found'], 404);
+            return response()->json(['success' => false, 'error' => 'Page not found'], 404);
         }
 
-        // Check if the 'main' column is set to 1 (indicating it's the main page)
-        return response()->json(['isMainPage' => $page->main == 1]);
+        // Optionally check if the page belongs to the logged-in user
+        // if ($page->user_id !== auth()->id()) {
+        //     return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        // }
+
+        // Delete the page
+        $page->delete();
+
+        // Return success response
+        return response()->json(['success' => true, 'page' => $page]);
     }
 
+
+
+    public function pageRename(Request $request, $id)
+    {
+        // Find the page by ID
+        $page = WebPage::where('page_id', $request->page_id)->first();
+
+        // Check if page exists
+        if (!$page) {
+            return response()->json(['success' => false, 'error' => 'Page not found'], 404);
+        }
+
+        // Optionally check if the page belongs to the logged-in user
+        // if ($page->user_id !== auth()->id()) {
+        //     return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        // }
+
+        // Update the page name
+        $page->name = $request->name;
+        $page->save(); // Save the updated name
+
+        // Return success response
+        return response()->json(['success' => true, 'page' => $page]);
+    }
+
+
+
+
+    public function pageHtmlCss(Request $request)
+    {
+        $page = WebPage::where('page_id', $request->pageId)->first();
+        $page->html = $request->html; // Assuming `html_content` is the column name
+        $page->css = $request->css; // Assuming `css_content` is the column name
+        $page->save();
+
+        return response()->json(['success' => true, 'message' => 'Page content saved successfully!']);
+    }
 }

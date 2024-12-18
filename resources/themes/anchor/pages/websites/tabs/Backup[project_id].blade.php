@@ -26,6 +26,7 @@ new class extends Component implements HasForms {
     public ?array $data = []; // Holds form data
     public $activeTab = 'overview'; // Active tab (default: overview)
     public $pages;
+    public ?array $pageData = []; // Pages form data
 
 
     // Mount method to set the project_id from the URL and fetch the project
@@ -51,52 +52,109 @@ new class extends Component implements HasForms {
     }
 
 
+
+
+    public function updatePageList($pgId)
+    {
+        $this->selectedPage = $pgId;
+        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
+        if ($pageInstance) {
+            $this->form->fill([
+                'page_name' => $pageInstance->name,
+                'page_title' => $pageInstance->title,
+                'page_meta_description' => $pageInstance->meta_description,
+                'page_og_tags' => $pageInstance->og,
+                'page_header_embed_code' => $pageInstance->embed_code_start,
+                'page_footer_embed_code' => $pageInstance->embed_code_end,
+            ]);
+        }
+    }
+
+
+
     // Define the form schema
     public function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                // Rename Website Field
-                TextInput::make('rename')
-                    ->label('Website Name')
-                    ->placeholder('Enter Website Name')
-                    ->maxLength(255),
+        if ($this->activeTab === 'website_settings') {
+            return $form
+                ->schema([
+                    // Rename Website Field
+                    TextInput::make('rename')
+                        ->label('Website Name')
+                        ->placeholder('Enter Website Name')
+                        ->maxLength(255),
 
-                // Description Textarea
-                Textarea::make('description')
-                    ->label('Description')
-                    ->placeholder('Describe your website')
-                    ->rows(5)
-                    ->maxLength(1000),
+                    // Description Textarea
+                    Textarea::make('description')
+                        ->label('Description')
+                        ->placeholder('Describe your website')
+                        ->rows(5)
+                        ->maxLength(1000),
 
-                // Logo Uploader
-                FileUpload::make('logo')
-                    ->label('Upload Logo')
-                    ->image()
-                    ->directory("usersites/{$this->project->project_id}")
-                    ->disk('public')
-                    ->maxSize(1024)
-                    ->helperText('Upload a logo for your website'),
+                    // Logo Uploader
+                    FileUpload::make('logo')
+                        ->label('Upload Logo')
+                        ->image()
+                        ->directory("usersites/{$this->project->project_id}")
+                        ->disk('public')
+                        ->maxSize(1024)
+                        ->helperText('Upload a logo for your website'),
 
-                // Robots.txt Textarea
-                Textarea::make('robots_txt')
-                    ->label('Edit Robots.txt')
-                    ->placeholder('Add or modify the Robots.txt content')
-                    ->rows(5),
+                    // Robots.txt Textarea
+                    Textarea::make('robots_txt')
+                        ->label('Edit Robots.txt')
+                        ->placeholder('Add or modify the Robots.txt content')
+                        ->rows(5),
 
-                // Embed Code for Header
-                Textarea::make('header_embed')
-                    ->label('Embed Code in Header')
-                    ->placeholder('Add custom embed code for the header')
-                    ->rows(5),
+                    // Embed Code for Header
+                    Textarea::make('header_embed')
+                        ->label('Embed Code in Header')
+                        ->placeholder('Add custom embed code for the header')
+                        ->rows(5),
 
-                // Embed Code for Footer
-                Textarea::make('footer_embed')
-                    ->label('Embed Code in Footer')
-                    ->placeholder('Add custom embed code for the footer')
-                    ->rows(5),
-            ])
-            ->statePath('data');
+                    // Embed Code for Footer
+                    Textarea::make('footer_embed')
+                        ->label('Embed Code in Footer')
+                        ->placeholder('Add custom embed code for the footer')
+                        ->rows(5),
+                ])
+                ->statePath('data');
+        }
+
+        if ($this->activeTab === 'pages') {
+
+            return $form
+                ->schema([
+                    TextInput::make('page_name')
+                        ->label('Page Name')
+                        ->placeholder('Enter page name')
+                        ->maxLength(255),
+
+                    TextInput::make('page_title')
+                        ->label('Page Title')
+                        ->placeholder('Enter page title')
+                        ->maxLength(255),
+                    Textarea::make('page_meta_description')
+                        ->label('Meta Description')
+                        ->placeholder('Enter meta description')
+                        ->rows(3)
+                        ->maxLength(500),
+                    TextInput::make('page_og_tags')
+                        ->label('Open Graph Tags')
+                        ->placeholder('Enter OG tags'),
+                    Textarea::make('page_header_embed_code')
+                        ->label('Header Embed Code')
+                        ->placeholder('Paste header embed code here')
+                        ->rows(3),
+                    Textarea::make('page_footer_embed_code')
+                        ->label('Footer Embed Code')
+                        ->placeholder('Paste footer embed code here')
+                        ->rows(3),
+                ])
+                ->statePath('pageData');
+        }
+        // Default case or another tab condition
+        return $form->schema([]); // Or return a different form structure
     }
 
 
@@ -194,6 +252,94 @@ new class extends Component implements HasForms {
 
         $this->redirect('/websites');
     }
+
+
+
+    // Update the page data
+    public function pageUpdate()
+    {
+        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
+        if ($pageInstance) {
+            // Update the selected page's data
+
+            $pageInstance->update([
+                'name' => $this->pageData['page_name'],
+                'title' => $this->pageData['page_title'],
+                'meta_description' => $this->pageData['page_meta_description'],
+                'og' => $this->pageData['page_og_tags'],
+                'embed_code_start' => $this->pageData['page_header_embed_code'],
+                'embed_code_end' => $this->pageData['page_footer_embed_code'],
+            ]);
+
+            Notification::make()->success()->title('Page data updated successfully.')->send();
+            $this->redirect('/websites' . '/' . $this->project->project_id);
+
+        } else {
+            Notification::make()->danger()->title('Page not found.')->send();
+            $this->redirect('/websites' . '/' . $this->project->project_id);
+        }
+    }
+
+    // Delete the page
+    public function pageDelete()
+    {
+        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
+        if ($pageInstance) {
+
+            $pageInstance->delete();
+
+            Notification::make()->success()->title('Page deleted successfully.')->send();
+
+            // Return a response with the pageId to trigger JS
+            return redirect('/websites' . '/' . $this->project->project_id)->with('pageDeleted', $pageInstance->page_id);
+        } else {
+            Notification::make()->danger()->title('Page not found.')->send();
+            $this->redirect('/websites' . '/' . $this->project->project_id);
+
+        }
+    }
+
+    // Update the main page
+    public function pageMain()
+    {
+        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
+        if ($pageInstance) {
+
+
+            // Set all pages with the same project_id to false
+            WebPage::where('website_id', $pageInstance->website_id)
+                ->update(['main' => false]);
+
+            // Set the selected page as main
+            $pageInstance->main = true;
+            $pageInstance->save();
+
+            Notification::make()->success()->title('Main Page updated successfully.')->send();
+            $this->redirect('/websites' . '/' . $this->project->project_id);
+
+        } else {
+            Notification::make()->danger()->title('Page not found.')->send();
+            $this->redirect('/websites' . '/' . $this->project->project_id);
+
+        }
+    }
+
+    // Duplicate the page
+    public function pageDuplicate()
+    {
+        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
+        if ($pageInstance) {
+
+            $newPage = $pageInstance->replicate();
+            $newPage->name = $pageInstance->name . '(Copy)';
+
+            Notification::make()->success()->title('Main Page updated successfully.')->send();
+        } else {
+            Notification::make()->danger()->title('Page not found.')->send();
+        }
+    }
+
+
 }
 ?>
 
@@ -202,7 +348,6 @@ new class extends Component implements HasForms {
     <x-app.container>
         <div class="container mx-auto my-6">
             <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Websites" :href="route('websites')" />
-
             <!-- Box with background, padding, and shadow -->
             <div class="bg-white p-6 rounded-lg shadow-lg">
                 <div class="flex items-center justify-between mb-5">
@@ -213,11 +358,11 @@ new class extends Component implements HasForms {
                     <div class="relative"
                         style="width: 250px; height: 141px; overflow: hidden; border: 1px solid #ccc; border-radius: 8px;">
                         <!-- GrapesJS Builder Embedded in an iframe with scaling -->
-                        <iframe
-                            src="{{ route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name]) }}"
+                        <div
                             class="absolute inset-0 w-full h-full pointer-events-none"
                             style="border: none; transform: scale(0.2); transform-origin: top left; width: 1250px; height: 750px;">
-                        </iframe>
+                            @include('builder.index', ['project_name' => $this->project->project_name, 'project_id' => $this->project->project_id])
+                        </div>
 
                         <!-- Transparent Overlay with Hover Effect -->
                         <a href="{{ route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name]) }}"
@@ -236,9 +381,6 @@ new class extends Component implements HasForms {
 
 
                 </div>
-
-
-
                 <!-- Tabs Navigation -->
                 <div class="mb-6 border-b border-gray-200">
                     <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
@@ -247,17 +389,23 @@ new class extends Component implements HasForms {
                                 class="inline-block p-4 rounded-t-lg {{ $activeTab === 'overview' ? 'border-b-2 border-blue-500' : '' }}">Overview</a>
                         </li>
                         <li class="mr-2">
-                            <a wire:click="$set('activeTab', 'headerFooter')" href="#header/footer"
+                            <a wire:click="$set('activeTab', 'headerFooter')" href="#header/footer" id="headerfooter"
                                 class="inline-block p-4 rounded-t-lg {{ $activeTab === 'headerFooter' ? 'border-b-2 border-blue-500' : '' }}">Header/Footer</a>
                         </li>
                         <li class="mr-2">
-                            <a wire:click="$set('activeTab', 'settings')" href="#settings"
-                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'settings' ? 'border-b-2 border-blue-500' : '' }}">Settings</a>
+                            <a wire:click="$set('activeTab', 'pages')" href="#pages"
+                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'pages' ? 'border-b-2 border-blue-500' : '' }}">Pages</a>
+                        </li>
+                        <li class="mr-2">
+                            <a wire:click="$set('activeTab', 'website_settings')" href="#webiste_settings"
+                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'website_settings' ? 'border-b-2 border-blue-500' : '' }}">Website Settings</a>
+                        </li>
+                        <li class="mr-2">
+                            <a wire:click="$set('activeTab', 'live_settings')" href="#live_settings"
+                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'live_settings' ? 'border-b-2 border-blue-500' : '' }}">Live Settings</a>
                         </li>
                     </ul>
                 </div>
-
-
                 <!-- Overview Tab Content -->
                 @if ($activeTab === 'overview')
                     <div class="space-y-6">
@@ -297,11 +445,10 @@ new class extends Component implements HasForms {
                     </div>
 
 
-                @elseif ($activeTab === 'settings')
+                @elseif ($activeTab === 'website_settings')
                     <!-- Website Settings Box -->
-                    <div class="bg-white p-6 rounded-md shadow-md">
-                        <form wire:submit="edit" class="space-y-6">
-                            <h2 class="text-lg font-semibold mb-4">Website Settings</h2>
+                    <form wire:submit="edit" class="space-y-6">
+                        <h2 class="text-lg font-semibold mb-4">Website Settings</h2>
 
                             <!-- Render the form fields here -->
                             {{ $this->form }}
@@ -315,13 +462,13 @@ new class extends Component implements HasForms {
                                     class="text-white bg-primary-600 hover:bg-primary-500">Save
                                     Changes</x-button>
 
-                                <!-- Dropdown for More Actions -->
-                                <x-dropdown class="text-gray-500">
-                                    <x-slot name="trigger">
-                                        <x-button type="button" color="gray">More Actions</x-button>
-                                    </x-slot>
+                                    <!-- Dropdown for More Actions -->
+                                    <x-dropdown class="text-gray-500">
+                                        <x-slot name="trigger">
+                                            <x-button type="button" color="gray">More Actions</x-button>
+                                        </x-slot>
 
-                                    <!-- Duplicate Website -->
+                                        <!-- Duplicate Website -->
                                     <a href="#" wire:click="duplicate"
                                         class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
                                         <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Website
@@ -335,53 +482,264 @@ new class extends Component implements HasForms {
 
                                     <!-- Delete Website -->
                                     <a href="#" wire:click="delete"
-                                        class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
+                                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
                                         <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Website
                                     </a>
                                 </x-dropdown>
                             </div>
                         </form>
 
+                @elseif($activeTab === 'pages')
 
+                    <h3 class="text-lg font-semibold mt-8">Pages</h3>
 
-
-                        <h3 class="text-lg font-semibold mt-8">Page Settings</h3>
-
-                        <div class="space-y-4 mt-4">
-                            @foreach($this->pages as $page)
-                                <div class="bg-gray-100 p-4 rounded-md shadow-sm">
-                                    <!-- Page Title with toggle -->
-                                    <div class="flex justify-between items-center">
-                                        <button wire:click="$set('selectedPage', {{ $page->id }})"
-                                            class="text-lg font-semibold text-left w-full">
-                                            {{ $page->name }}
-                                        </button>
-                                    </div>
-
-                                    <!-- Page Settings (Only show if selectedPage matches the page ID) -->
-                                    @if ($selectedPage === $page->id)
-                                        <div class="mt-4">
-                                            <div class="space-y-3">
-                                                <!-- Example page settings -->
-                                                <input name="page_name" label="Page Name" value="{{ $page->name }}" />
-                                                <input name="page_description" label="Page Description"
-                                                    value="{{ $page->page_id }}" />
-                                            </div>
-                                        </div>
-                                    @endif
+                    <div class="space-y-4 mt-4">
+                        @foreach($this->pages as $page)
+                            <div class="bg-white p-6 rounded-md shadow-md">
+                                <!-- Page Title with toggle -->
+                                <div class="flex justify-between items-center">
+                                    <button wire:click="updatePageList({{ $page->id }})"
+                                        class="text-lg font-semibold text-left w-full">
+                                        {{ $page->name }}
+                                    </button>
                                 </div>
-                            @endforeach
-                        </div>
+
+                                <!-- Page Settings (Only show if selectedPage matches the page ID) -->
+                                @if ($selectedPage === $page->id)
+                                                <div class="mt-4">
+                                                    <div class="space-y-3">
+                                                       {{$this->form}}
+                                        <div class="flex justify-end gap-x-3">
+                                        <!-- Cancel Button -->
+                                        <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
+
+                                        <!-- Save Changes Button -->
+                                        <x-button type="button" wire:click="pageUpdate"
+                                            class="text-white bg-primary-600 hover:bg-primary-500">Save
+                                            Changes</x-button>
+
+                                            <!-- Dropdown for More Actions -->
+                                            <x-dropdown class="text-gray-500">
+                                                <x-slot name="trigger">
+                                                    <x-button type="button" color="gray">More Actions</x-button>
+                                                </x-slot>
+
+                                                <!-- Duplicate Website -->
+                                            <a href="#" wire:click="pageDuplicate"
+                                                class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                                                <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Page
+                                            </a>
+
+                                            <!-- Save as My Template -->
+                                            <a href="#" wire:click="pageMain"
+                                                class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                                                <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Set as Main Page
+                                            </a>
+
+                                            <!-- Delete Website -->
+                                            <a href="#" wire:click="pageDelete"
+                                            class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
+                                                <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Page
+                                            </a>
+                                        </x-dropdown>
+                                    </div>
+                                                    </div>
+                                                </div>
+                                @endif
+                            </div>
+                        @endforeach
+                            </div>
 
 
-
-                    </div>
 
                 @elseif ($activeTab === 'headerFooter')
-                    <p>Header/Footer Content Goes Here.</p>
+                    <div id="page-list" class="space-y-4 mt-4">
+                        <!-- Pages List Container -->
+                        <ul id="settings-page-list" class="list-group space-y-4">
+                            <!-- Pages will be dynamically rendered here by the renderPagesInSettings function -->
+                        </ul>
+                    </div>
                 @endif
             </div>
         </div>
+
+                  
+<script>
+
+    function renderPagesInSettings() {
+        const settingsPageList = document.getElementById('settings-page-list'); // Assuming the list container in your settings page
+        settingsPageList.innerHTML = ""; // Clear current list
+
+        const allPages = pagesApi.getAll(); // Get all pages using the GJS API
+        const selectedPageId = pagesApi.getSelected()?.id; // Get the ID of the selected page
+
+        // If there are pages, loop through and add them to the list
+        if (allPages.length > 0) {
+            allPages.forEach((pageItem) => {
+                const listItem = document.createElement("li");
+                listItem.className = "settings-page-item"; // Class name for styling
+                const isSelected = selectedPageId && pageItem.id === selectedPageId;
+
+                listItem.innerHTML = `
+<div class="bg-white p-6 rounded-md shadow-md">
+    <div class="settings-page-name-container flex justify-between items-center cursor-pointer">
+        <div class="settings-page-name text-lg font-semibold text-left w-full" contenteditable="false">
+            ${pageItem.getName()}</div>
+    </div>
+
+
+
+<div class="settings-sub-menu mt-4">
+
+
+            <div class="mt-3">
+                <input value="${pageItem.getName()}" type="text" class="name-input p-2 border rounded-md w-full mb-2"
+                    placeholder="Enter new page name" />
+                <input value="${pageItem.get('meta')?.title || ''}" type="text" id="meta-title-${pageItem.id}" placeholder="Title"
+                    class="p-2 border rounded-md w-full mb-2" />
+                <input value="${pageItem.get('meta')?.description || ''}" type="text" id="meta-description-${pageItem.id}"
+                    placeholder="Meta Description" class="p-2 border rounded-md w-full mb-2" />
+                <textarea id="meta-og-${pageItem.id}" placeholder="OG Tags"
+                    class="p-2 border rounded-md w-full mb-2">${pageItem.get('meta')?.ogTags || ''}</textarea>
+                <textarea id="header-embed-${pageItem.id}" placeholder="Header Embed"
+                    class="p-2 border rounded-md w-full mb-2">${pageItem.get('meta')?.headerEmbed || ''}</textarea>
+                <textarea id="footer-embed-${pageItem.id}" placeholder="Footer Embed"
+                    class="p-2 border rounded-md w-full">${pageItem.get('meta')?.footerEmbed || ''}</textarea>
+            </div>
+
+
+            <div class="flex justify-end gap-x-3">
+                <!-- Button for Save Changes -->
+                <x-button class="save-changes-btn" type="button" color="primary">Save Changes</x-button>
+                <!-- Button for Delete -->
+                <x-button class="delete-page-btn" type="button" color="danger">Delete</x-button>
+                <!-- Button for Cancel -->
+                <x-button class="cancel-action-btn" type="button" color="secondary">Cancel</x-button>
+            </div>
+        </div>
+    </div>
+</div>
+`;
+
+                settingsPageList.appendChild(listItem);
+
+                const settingsSubMenu = listItem.querySelector(".settings-sub-menu");
+                const saveChangesBtn = listItem.querySelector(".save-changes-btn");
+                const deleteBtn = listItem.querySelector(".delete-page-btn");
+                const cancelBtn = listItem.querySelector(".cancel-action-btn");
+                const pageNameElement = listItem.querySelector(".settings-page-name");
+
+                // Initially hide the sub-menu
+                settingsSubMenu.style.display = "none"; // Hide sub-menu initially
+
+                // Toggle sub-menu visibility on page name div click only
+                const pageNameContainer = listItem.querySelector(".settings-page-name-container");
+                pageNameContainer.addEventListener("click", function (e) {
+                    e.stopPropagation(); // Prevent event bubbling
+
+                    // Close any other open sub-menus
+                    document.querySelectorAll(".settings-sub-menu").forEach((menu) => {
+                        if (menu !== settingsSubMenu && menu.style.display === "block") {
+                            menu.style.animation = "slideUp 0.2s ease-in forwards";
+                            setTimeout(() => {
+                                menu.style.display = "none"; // Hide after slide-up animation
+                                menu.style.animation = ""; // Reset animation
+                            }, 200);
+                        }
+                    });
+
+                    // Toggle current sub-menu visibility
+                    if (settingsSubMenu.style.display === "none") {
+                        settingsSubMenu.style.display = "block";
+                        settingsSubMenu.style.animation = "slideDown 0.2s ease-out forwards";
+                    } else {
+                        settingsSubMenu.style.animation = "slideUp 0.2s ease-in forwards";
+                        setTimeout(() => {
+                            settingsSubMenu.style.display = "none";
+                            settingsSubMenu.style.animation = "";
+                        }, 200);
+                    }
+                });
+
+                // Handle Cancel button click
+                cancelBtn.addEventListener("click", (e) => {
+                    e.stopPropagation(); // Prevent li click from triggering page selection
+                   
+                    pageNameElement.contentEditable = "false"; // Make the page name non-editable again
+                    renderPagesInSettings();
+                });
+
+                // Handle Save Changes action (Save Name and Title)
+                saveChangesBtn.addEventListener("click", () => {
+                    const newPageName = listItem.querySelector(".name-input").value.trim();
+                    const title = document.getElementById(`meta-title-${pageItem.id}`).value.trim();
+                    const description = document.getElementById(`meta-description-${pageItem.id}`).value.trim();
+                    const ogTags = document.getElementById(`meta-og-${pageItem.id}`).value.trim();
+                    const headerEmbed = document.getElementById(`header-embed-${pageItem.id}`).value.trim();
+                    const footerEmbed = document.getElementById(`footer-embed-${pageItem.id}`).value.trim();
+
+                    if (!newPageName) {
+                        alert("Page name cannot be empty!");
+                        return; // Stop execution if the page name is invalid
+                    }
+
+                    // Update the page name
+                    pageItem.setName(newPageName);
+
+                    // Save metadata inside the page object using GJS API
+                    pageItem.set({
+                        meta: {
+                            title: title, // Use an empty string if input is blank
+                            description: description,
+                            ogTags: ogTags,
+                            headerEmbed: headerEmbed,
+                            footerEmbed: footerEmbed,
+                        },
+                    });
+
+                    renderPagesInSettings(); // Refresh the list of pages
+                    editor.store();
+                });
+
+
+                // Handle Delete button click
+                deleteBtn.addEventListener("click", (e) => {
+                    e.stopPropagation(); // Prevent li click from triggering page selection
+                    if (confirm(`Are you sure you want to delete the page: "${pageItem.getName()}"?`)) {
+                        pagesApi.remove(pageItem.id); // Delete the page using the GJS API
+                        renderPagesInSettings(); // Re-render the list after deletion
+                    }
+                });
+            });
+        } else {
+            const noPagesMessage = document.createElement("li");
+            noPagesMessage.className = "settings-page-item";
+            noPagesMessage.textContent = "No pages available.";
+            settingsPageList.appendChild(noPagesMessage);
+        }
+    }
+  
+    
+    
+    var hf = document.getElementById('headerfooter');
+    hf.addEventListener('click', function () {
+        const checkInterval = setInterval(function () {
+            const pageListContainer = document.getElementById('settings-page-list');
+
+            // If the container exists, call the function and stop checking
+            if (pageListContainer) {
+                renderPagesInSettings();
+                clearInterval(checkInterval); // Stop the interval once the element is found
+            }
+        }, 100); // Check every 100ms
+    });
+
+</script>
+
+        
+
     </x-app.container>
     @endvolt
 </x-layouts.app>
+
+

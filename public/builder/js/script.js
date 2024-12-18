@@ -96,10 +96,44 @@ editor.Panels.addButton("options", {
 function saveContent() {
   startLoadingAnimation();
   editor.store();
-  setTimeout(() => {
-    showSuccessAnimation();
-    console.log("Saved!!!");
-  }, 1500);
+
+  // Get the current page's HTML and CSS
+  const htmlContent = editor.getHtml();
+  const cssContent = editor.getCss();
+  const activePageId = pagesApi.getSelected()?.id; // Get the ID of the active/selected page
+
+  // Prepare data to send to the backend
+  const data = {
+    html: htmlContent,
+    css: cssContent,
+    pageId: activePageId, // Replace this with the actual current page ID
+  };
+
+  // Send data to backend (using Fetch API)
+  fetch("/pages/data", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content, // Laravel CSRF token
+    },
+    body: JSON.stringify(data),
+  })
+    .then((response) => response.json())
+    .then((result) => {
+      if (result.success) {
+        setTimeout(() => {
+          showSuccessAnimation();
+          console.log("Saved!!!");
+        }, 1500);
+      } else {
+        // showErrorAnimation(); // Error feedback
+        console.error("Save failed:", result.message);
+      }
+    })
+    .catch((error) => {
+      // showErrorAnimation(); // Handle network errors
+      console.error("Error saving content:", error);
+    });
 }
 
 function startLoadingAnimation() {
@@ -178,8 +212,6 @@ function renderPages() {
           <li class="menu-item delete-page gjs-one-bg gjs-two-color gjs-four-color-h" data-id="${
             page.id
           }">Delete</li>
-          <li class="menu-item set-main-page gjs-one-bg gjs-two-color gjs-four-color-h" data-id="${
-            page.id}">Set as Main Page</li>
         </ul>
       `;
       pageList.appendChild(li);
@@ -214,43 +246,6 @@ function renderPages() {
             subMenu.style.animation = ""; // Reset animation
           }, 200); // Match the duration of slide-up animation
         }
-      });
-
-      // Handle "Set as Main Page" click
-      const setMainPageBtn = li.querySelector(".set-main-page");
-      setMainPageBtn.addEventListener("click", (e) => {
-        e.stopPropagation(); // Prevent li click from triggering page selection
-        const pageId = page.id; // Assuming you store the page id in the data attribute
-        const webId = projectId; // Assuming website id is also stored
-
-        // Send a POST request to set the main page
-        fetch("/set-main-page", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": document
-              .querySelector('meta[name="csrf-token"]')
-              .getAttribute("content"), // CSRF Token
-          },
-          body: JSON.stringify({
-            page_id: pageId,
-            website_id: webId,
-          }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              alert("Main page updated successfully!");
-            } else {
-              alert("Error: " + data.error);
-            }
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-            alert("An error occurred while updating the main page.");
-          });
-
-        subMenu.style.display = "none"; // Close sub-menu after action
       });
 
       // Handle "EDIT" click
@@ -296,7 +291,37 @@ function renderPages() {
           const newPageName = this.textContent.trim();
           if (newPageName) {
             page.setName(newPageName); // Update the page name
+
+            // Send the updated name to the backend
+            const pageId = page.id;
+            const updatedPageData = {
+              name: newPageName,
+              page_id: pageId,
+            };
+
+            // Send the updated page name to the backend
+      fetch(`/pages/rename/${pageId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": document
+            .querySelector('meta[name="csrf-token"]')
+            .getAttribute("content"), // CSRF token
+        },
+        body: JSON.stringify(updatedPageData),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            console.log("Page renamed successfully:", data.page);
+            saveContent();
+            renderPages(); // Re-render the list of pages with updated names
+          } else {
+            console.error("Error renaming page:", data.error);
           }
+        })
+        .catch((error) => console.error("Error:", error));
+        }
         });
 
         // Add event listener to save on Enter key
@@ -312,17 +337,38 @@ function renderPages() {
       const deletePageBtn = li.querySelector(".delete-page");
       deletePageBtn.addEventListener("click", (e) => {
         e.stopPropagation(); // Prevent li click from triggering page selection
-        const projectId = e.target.dataset.id;
-        const page = pagesApi.getAll().find((p) => p.id === projectId); // Find the page by ID
+        const pageId = e.target.dataset.id; // Get the page ID from the data attribute
+        const page = pagesApi.getAll().find((p) => p.id === pageId); // Find the page by ID
         const pageName = page ? page.getName() : "Unknown Page"; // Get the page name, fallback if not found
 
         // Ask for confirmation
         if (
           confirm(`Are you sure you want to delete the page: "${pageName}"?`)
         ) {
-          pagesApi.remove(projectId); // Delete the selected page
-          renderPages(); // Re-render the list after deletion
+          // Send DELETE request to backend to remove the page from the database
+          fetch(`/pages/${pageId}`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-TOKEN": document
+                .querySelector('meta[name="csrf-token"]')
+                .getAttribute("content"), // CSRF token
+            },
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                console.log("Page deleted successfully:", data.page);
+                pagesApi.remove(pageId); // Delete the page locally using GrapesJS API
+                renderPages(); // Re-render the list of pages
+                saveContent();
+              } else {
+                console.error("Error deleting page:", data.error);
+              }
+            })
+            .catch((error) => console.error("Error:", error));
         }
+
         subMenu.style.display = "none"; // Close sub-menu after action
       });
     });
@@ -364,6 +410,7 @@ addPageBtn.addEventListener("click", () => {
       if (data.success) {
         console.log("Page added successfully:", data.page);
         renderPages(); // Update the list
+        saveContent();
       } else {
         console.error("Error adding page:", data.error);
       }
@@ -594,12 +641,7 @@ editor.Commands.add("liveContent", {
     };
 
     // Helper function to check if a page is marked as main in the database
-    const checkIfMainPage = async (pageId) => {
-      // Make an API call to check if the page is marked as the main page (assuming you have such a field in DB)
-      const response = await fetch(`/check-main-page/${pageId}`);
-      const data = await response.json();
-      return data.isMainPage; // Expected to return a boolean value (true if it's the main page, false otherwise)
-    };
+    const checkIfMainPage = false;
 
     processPages(); // Start processing the pages
   },

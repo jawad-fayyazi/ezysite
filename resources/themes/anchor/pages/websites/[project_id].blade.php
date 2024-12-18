@@ -56,21 +56,39 @@ new class extends Component implements HasForms {
 
     public function updatePageList($pgId)
     {
-        $this->selectedPage = $pgId;
-        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
-        if ($pageInstance) {
-            $this->form->fill([
-                'page_name' => $pageInstance->name,
-                'page_title' => $pageInstance->title,
-                'page_meta_description' => $pageInstance->meta_description,
-                'page_og_tags' => $pageInstance->og,
-                'page_header_embed_code' => $pageInstance->embed_code_start,
-                'page_footer_embed_code' => $pageInstance->embed_code_end,
-            ]);
+
+        // Check if the selected page is the same as the clicked page
+        if ($this->selectedPage === $pgId) {
+            // If it is, deselect it (remove the ID and collapse the page)
+            $this->selectedPage = null;
+        } else {
+            // Otherwise, select the new page and fill the form
+            $this->selectedPage = $pgId;
+
+            $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
+            if ($pageInstance) {
+                $this->form->fill([
+                    'page_name' => $pageInstance->name,
+                    'page_title' => $pageInstance->title,
+                    'page_meta_description' => $pageInstance->meta_description,
+                    'page_og_tags' => $pageInstance->og,
+                    'page_header_embed_code' => $pageInstance->embed_code_start,
+                    'page_footer_embed_code' => $pageInstance->embed_code_end,
+                ]);
+            }
         }
     }
 
 
+    public function pagesSetForm(){
+        $this->activeTab = "pages";
+    }
+
+
+    public function websiteSettingsSetForm()
+    {
+        $this->activeTab = "website_settings";
+    }
 
     // Define the form schema
     public function form(Form $form): Form
@@ -127,9 +145,8 @@ new class extends Component implements HasForms {
                 ->schema([
                     TextInput::make('page_name')
                         ->label('Page Name')
-                        ->placeholder('Enter page name')
+                        ->readonly()
                         ->maxLength(255),
-
                     TextInput::make('page_title')
                         ->label('Page Title')
                         ->placeholder('Enter page title')
@@ -139,9 +156,10 @@ new class extends Component implements HasForms {
                         ->placeholder('Enter meta description')
                         ->rows(3)
                         ->maxLength(500),
-                    TextInput::make('page_og_tags')
+                    Textarea::make('page_og_tags')
                         ->label('Open Graph Tags')
-                        ->placeholder('Enter OG tags'),
+                        ->placeholder('Enter OG tags')
+                        ->rows(3),
                     Textarea::make('page_header_embed_code')
                         ->label('Header Embed Code')
                         ->placeholder('Paste header embed code here')
@@ -263,7 +281,6 @@ new class extends Component implements HasForms {
             // Update the selected page's data
 
             $pageInstance->update([
-                'name' => $this->pageData['page_name'],
                 'title' => $this->pageData['page_title'],
                 'meta_description' => $this->pageData['page_meta_description'],
                 'og' => $this->pageData['page_og_tags'],
@@ -277,25 +294,6 @@ new class extends Component implements HasForms {
         } else {
             Notification::make()->danger()->title('Page not found.')->send();
             $this->redirect('/websites' . '/' . $this->project->project_id);
-        }
-    }
-
-    // Delete the page
-    public function pageDelete()
-    {
-        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
-        if ($pageInstance) {
-
-
-            // Update only the fields that are not empty
-            $pageInstance->delete();
-
-            Notification::make()->success()->title('Page deleted successfully.')->send();
-
-        } else {
-            Notification::make()->danger()->title('Page not found.')->send();
-            $this->redirect('/websites' . '/' . $this->project->project_id);
-
         }
     }
 
@@ -324,22 +322,6 @@ new class extends Component implements HasForms {
         }
     }
 
-    // Duplicate the page
-    public function pageDuplicate()
-    {
-        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
-        if ($pageInstance) {
-
-            $newPage = $pageInstance->replicate();
-            $newPage->name = $pageInstance->name . '(Copy)';
-
-            Notification::make()->success()->title('Main Page updated successfully.')->send();
-        } else {
-            Notification::make()->danger()->title('Page not found.')->send();
-        }
-    }
-
-
 }
 ?>
 
@@ -354,61 +336,36 @@ new class extends Component implements HasForms {
                     <!-- Display the current project name as a heading -->
                     <x-app.heading title="Website: {{ $this->project->project_name }}"
                         description="Manage your website's details and settings." :border="false" />
-
-                    <div class="relative"
-                        style="width: 250px; height: 141px; overflow: hidden; border: 1px solid #ccc; border-radius: 8px;">
-                        <!-- GrapesJS Builder Embedded in an iframe with scaling -->
-                        <iframe
-                            src="{{ route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name]) }}"
-                            class="absolute inset-0 w-full h-full pointer-events-none"
-                            style="border: none; transform: scale(0.2); transform-origin: top left; width: 1250px; height: 750px;">
-                        </iframe>
-
-                        <!-- Transparent Overlay with Hover Effect -->
-                        <a href="{{ route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name]) }}"
-                            target="_blank"
-                            class="absolute inset-0 bg-transparent flex items-center justify-center group cursor-pointer">
-
-                            <!-- Transparent background and hover effect -->
-                            <div class="flex absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                                <!-- Pencil Icon from Phosphor Icons -->
-                                <x-icon name="phosphor-pencil" class="w-6 h-6" />
-                            </div>
-
-                        </a>
-
-                    </div>
-
-
+                        <x-button tag="a" :href="route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name])">Open In Builder</x-button>
                 </div>
                 <!-- Tabs Navigation -->
                 <div class="mb-6 border-b border-gray-200">
                     <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
                         <li class="mr-2">
-                            <a wire:click="$set('activeTab', 'overview')" href="#overview"
-                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'overview' ? 'border-b-2 border-blue-500' : '' }}">Overview</a>
+                            <a href="#overview"
+                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="overview">Overview</a>
                         </li>
                         <li class="mr-2">
-                            <a wire:click="$set('activeTab', 'headerFooter')" href="#header/footer"
-                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'headerFooter' ? 'border-b-2 border-blue-500' : '' }}">Header/Footer</a>
+                            <a href="#header/footer" id="headerfooter"
+                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="header-footer">Header/Footer</a>
                         </li>
                         <li class="mr-2">
-                            <a wire:click="$set('activeTab', 'pages')" href="#pages"
-                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'pages' ? 'border-b-2 border-blue-500' : '' }}">Pages</a>
+                            <a wire:click="pagesSetForm" href="#pages"
+                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="pages">Pages</a>
                         </li>
                         <li class="mr-2">
-                            <a wire:click="$set('activeTab', 'website_settings')" href="#webiste_settings"
-                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'website_settings' ? 'border-b-2 border-blue-500' : '' }}">Website Settings</a>
+                            <a wire:click="websiteSettingsSetForm" href="#webiste_settings"
+                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="website-settings">Website Settings</a>
                         </li>
                         <li class="mr-2">
                             <a wire:click="$set('activeTab', 'live_settings')" href="#live_settings"
-                                class="inline-block p-4 rounded-t-lg {{ $activeTab === 'live_settings' ? 'border-b-2 border-blue-500' : '' }}">Live Settings</a>
+                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="live-settings">Live Settings</a>
                         </li>
                     </ul>
                 </div>
                 <!-- Overview Tab Content -->
-                @if ($activeTab === 'overview')
-                    <div class="space-y-6">
+                
+                    <div id="overview" class="hidden space-y-6 tab-panel">
                         <!-- Website Name -->
                         <div class="flex items-center justify-between">
                             <h2 class="text-2xl font-semibold">{{ $this->project->project_name }}</h2>
@@ -445,11 +402,12 @@ new class extends Component implements HasForms {
                     </div>
 
 
-                @elseif ($activeTab === 'website_settings')
+                
                     <!-- Website Settings Box -->
+                    <div id="website-settings" class="hidden tab-panel">
                     <form wire:submit="edit" class="space-y-6">
                         <h2 class="text-lg font-semibold mb-4">Website Settings</h2>
-                        
+
                             <!-- Render the form fields here -->
                             {{ $this->form }}
 
@@ -461,13 +419,13 @@ new class extends Component implements HasForms {
                                 <x-button type="button" wire:click="edit"
                                     class="text-white bg-primary-600 hover:bg-primary-500">Save
                                     Changes</x-button>
-                                    
+
                                     <!-- Dropdown for More Actions -->
                                     <x-dropdown class="text-gray-500">
                                         <x-slot name="trigger">
                                             <x-button type="button" color="gray">More Actions</x-button>
                                         </x-slot>
-                                        
+
                                         <!-- Duplicate Website -->
                                     <a href="#" wire:click="duplicate"
                                         class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
@@ -479,7 +437,7 @@ new class extends Component implements HasForms {
                                         class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
                                         <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as My Template
                                     </a>
-                                    
+
                                     <!-- Delete Website -->
                                     <a href="#" wire:click="delete"
                                     class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
@@ -488,88 +446,89 @@ new class extends Component implements HasForms {
                                 </x-dropdown>
                             </div>
                         </form>
-                        
-                @elseif($activeTab === 'pages')
+                    </div>
 
-                                                        <h3 class="text-lg font-semibold mt-8">Pages</h3>
+               
+                    <div id="pages" class="hidden tab-panel">
+                                        <h2 class="text-lg font-semibold mb-4">Pages Meta Data</h2>
+                                        <div class="space-y-4 mt-4">
+                                            @foreach($this->pages as $page)
+                                                <div class="bg-white p-6 rounded-md shadow-md">
+                                                    <!-- Page Title with toggle -->
+                                                    <div class="flex justify-between items-center">
+                                                        <button wire:click="updatePageList({{ $page->id }})"
+                                                            class="text-lg font-semibold text-left w-full">
+                                                            {{ $page->name }}
+                                                        </button>
+                                                    </div>
 
-                                                        <div class="space-y-4 mt-4">
-                                                            @foreach($this->pages as $page)
-                                                                        <div class="bg-white p-6 rounded-md shadow-md">
-                                                                            <!-- Page Title with toggle -->
-                                                                            <div class="flex justify-between items-center">
-                                                                                <button wire:click="updatePageList({{ $page->id }})"
-                                                                                    class="text-lg font-semibold text-left w-full">
-                                                                                    {{ $page->name }}
-                                                                                </button>
-                                                                            </div>
+                                                    <!-- Page Settings (Only show if selectedPage matches the page ID) -->
+                                                    @if ($selectedPage === $page->id)
+                                                                    <div class="mt-4">
+                                                                        <div class="space-y-3">
+                                                                        {{$this->form}}
+                                                            <div class="flex justify-end gap-x-3">
+                                                            <!-- Cancel Button -->
+                                                            <x-button tag="button" wire:click="updatePageList({{ $page->id }})" color="secondary">Cancel</x-button>
 
-                                                                            <!-- Page Settings (Only show if selectedPage matches the page ID) -->
-                                                                            @if ($selectedPage === $page->id)
-                                                                                <div class="mt-4">
-                                                                                    <div class="space-y-3">
-                                                                                       {{$this->form}}
-                                                                        <div class="flex justify-end gap-x-3">
-                                                                        <!-- Cancel Button -->
-                                                                        <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
+                                                            <!-- Save Changes Button -->
+                                                            <x-button type="button" wire:click="pageUpdate"
+                                                                class="text-white bg-primary-600 hover:bg-primary-500">Save
+                                                                Changes</x-button>
+                                                            <x-button type="button" wire:click="pageMain" class="text-white bg-primary-600 hover:bg-primary-500">Set as Main Page</x-button>
 
-                                                                        <!-- Save Changes Button -->
-                                                                        <x-button type="button" wire:click="pageUpdate"
-                                                                            class="text-white bg-primary-600 hover:bg-primary-500">Save
-                                                                            Changes</x-button>
-
-                                                                            <!-- Dropdown for More Actions -->
-                                                                            <x-dropdown class="text-gray-500">
-                                                                                <x-slot name="trigger">
-                                                                                    <x-button type="button" color="gray">More Actions</x-button>
-                                                                                </x-slot>
-
-                                                                                <!-- Duplicate Website -->
-                                                                            <a href="#" wire:click="pageDuplicate"
-                                                                                class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
-                                                                                <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Page
-                                                                            </a>
-
-                                                                            <!-- Save as My Template -->
-                                                                            <a href="#" wire:click="pageMain"
-                                                                                class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
-                                                                                <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Set as Main Page
-                                                                            </a>
-
-                                                                            <!-- Delete Website -->
-                                                                            <a href="#" onclick="pageDeleteGJS({{$page->page_id}})"
-                                                                            class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
-                                                                                <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Page
-                                                                            </a>
-                                                                        </x-dropdown>
-                                                                    </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            @endif
+                                                        </div>
                                                                         </div>
-                                                                    @endforeach
-                                                                </div>
+                                                                    </div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                    </div>
 
 
-
-                @elseif ($activeTab === 'headerFooter')
-                    <p>Header/Footer Content Goes Here.</p>
-                @endif
+                
+                    
+                
             </div>
         </div>
-                    <script>
-                        
-                       function pageDeleteGJS(pgId) {
-                            const page = pagesApi.getAll().find((p) => p.id === pgId); // Find the page by ID
-                            const pageName = page ? page.getName() : "Unknown Page"; // Get the page name, fallback if not found
 
-                            // Ask for confirmation
-                            if (confirm(`Are you sure you want to delete the page: "${pageName}"?`)) {
-                                pagesApi.remove(pgId); // Delete the selected page
-                                renderPages(); // Re-render the list after deletion
-                            }
-                        };
-                    </script>
+@script          
+<script>
+        const tabs = document.querySelectorAll(".tab-btn");
+        const panels = document.querySelectorAll(".tab-panel");
+
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            // Hide all panels
+            panels.forEach(panel => {
+                panel.classList.add("hidden");
+                console.log("hiding this", panel.id);
+            });
+            console.log("hide complete");
+
+            // Remove the custom border classes from all tabs
+            tabs.forEach(tab => {
+                tab.classList.remove("border-b-2", "border-blue-500");
+            });
+
+
+           // Delay the removal of the "hidden" class for the clicked tab's panel
+            setTimeout(() => {
+                const target = document.getElementById(tab.dataset.tab);
+                target.classList.remove("hidden");
+                console.log("showing complete");
+
+                // Add active class to the clicked tab
+                tab.classList.add("border-b-2", "border-blue-500");
+            }, 500);
+        });
+    })
+</script>
+@endscript
+
+        
+
     </x-app.container>
     @endvolt
 </x-layouts.app>

@@ -10,6 +10,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Component;
 use App\Models\Project;
+use App\Models\HeaderFooter;
 use App\Models\PrivateTemplate;
 use App\Models\WebPage; // Assuming you have the WebPage model
 use function Laravel\Folio\{middleware, name};
@@ -49,6 +50,7 @@ new class extends Component implements HasForms {
                 'og_tags' => $page->og_tags,
                 'header_embed_code' => $page->header_embed_code,
                 'footer_embed_code' => $page->footer_embed_code,
+                'page_slug' => $page->slug,
             ];
         }
         ;
@@ -106,51 +108,49 @@ new class extends Component implements HasForms {
     // Define the form schema
     public function form(Form $form): Form
     {
-        if ($this->activeTab === 'website_settings') {
-            return $form
-                ->schema([
-                    // Rename Website Field
-                    TextInput::make('rename')
-                        ->label('Website Name')
-                        ->placeholder('Enter Website Name')
-                        ->maxLength(255),
+        return $form
+            ->schema([
+                // Rename Website Field
+                TextInput::make('rename')
+                    ->label('Website Name')
+                    ->placeholder('Enter website name')
+                    ->maxLength(255),
 
-                    // Description Textarea
-                    Textarea::make('description')
-                        ->label('Description')
-                        ->placeholder('Describe your website')
-                        ->rows(5)
-                        ->maxLength(1000),
+                // Description Textarea
+                Textarea::make('description')
+                    ->label('Description')
+                    ->placeholder('Describe your website')
+                    ->rows(5)
+                    ->maxLength(1000),
 
-                    // Logo Uploader
-                    FileUpload::make('logo')
-                        ->label('Upload Logo')
-                        ->image()
-                        ->directory("usersites/{$this->project->project_id}")
-                        ->disk('public')
-                        ->maxSize(1024)
-                        ->helperText('Upload a logo for your website'),
+                // Logo Uploader
+                FileUpload::make('logo')
+                    ->label('Upload Logo')
+                    ->image()
+                    ->directory("usersites/{$this->project->project_id}")
+                    ->disk('public')
+                    ->maxSize(1024)
+                    ->helperText('Upload a logo for your website'),
 
-                    // Robots.txt Textarea
-                    Textarea::make('robots_txt')
-                        ->label('Edit Robots.txt')
-                        ->placeholder('Add or modify the Robots.txt content')
-                        ->rows(5),
+                // Robots.txt Textarea
+                Textarea::make('robots_txt')
+                    ->label('Edit Robots.txt')
+                    ->placeholder('Add or modify the Robots.txt content')
+                    ->rows(5),
 
-                    // Embed Code for Header
-                    Textarea::make('header_embed')
-                        ->label('Embed Code in Header')
-                        ->placeholder('Add custom embed code for the header')
-                        ->rows(5),
+                // Embed Code for Header
+                Textarea::make('header_embed')
+                    ->label('Embed Code in Header')
+                    ->placeholder('Add custom embed code for the header')
+                    ->rows(5),
 
-                    // Embed Code for Footer
-                    Textarea::make('footer_embed')
-                        ->label('Embed Code in Footer')
-                        ->placeholder('Add custom embed code for the footer')
-                        ->rows(5),
-                ])
-                ->statePath('data');
-        }
+                // Embed Code for Footer
+                Textarea::make('footer_embed')
+                    ->label('Embed Code in Footer')
+                    ->placeholder('Add custom embed code for the footer')
+                    ->rows(5),
+            ])
+            ->statePath('data');
 
         if ($this->activeTab === 'pages') {
 
@@ -184,8 +184,6 @@ new class extends Component implements HasForms {
                 ])
                 ->statePath('pageData');
         }
-        // Default case or another tab condition
-        return $form->schema([]); // Or return a different form structure
     }
 
 
@@ -217,9 +215,16 @@ new class extends Component implements HasForms {
     {
         $data = $this->form->getState();
 
+
+        // Only update project_name if it is not empty
+        if (!empty($data['rename'])) {
+            $this->project->update([
+                'project_name' => $data['rename'],
+            ]);
+        }
+
         // Update project details
         $this->project->update([
-            'project_name' => $data['rename'],
             'description' => $data['description'],
             'robots_txt' => $data['robots_txt'], // Update robots.txt
             'header_embed' => $data['header_embed'], // Update header embed code
@@ -290,6 +295,26 @@ new class extends Component implements HasForms {
         dd($this->pageData);
     }
 
+    public function convertToSlug($string)
+    {
+        // Convert to lowercase
+        $string = strtolower($string);
+
+        // Replace spaces with hyphens
+        $string = str_replace(' ', '-', $string);
+
+        // Escape special characters and remove unwanted characters
+        $string = preg_replace('/[^a-z0-9-]/', '', $string);
+
+        // Remove multiple hyphens if they exist
+        $string = preg_replace('/-+/', '-', $string);
+
+        // Trim hyphens from the beginning and end of the string
+        $string = trim($string, '-');
+
+        return $string;
+    }
+
 
     // Update the page data
     public function pageUpdate($pageId)
@@ -297,15 +322,48 @@ new class extends Component implements HasForms {
         $page = WebPage::find($pageId);
         if ($page) {
             $data = $this->pageData[$pageId];
+            $slug = "";
+            $title = "";
 
-            // Update the selected page's data
+            // Check if page_slug is available in the data and convert it to a slug
+            $slug = $this->convertToSlug($data["page_slug"] ?? $data["page_name"]);
+
+            // Ensure the slug is not empty after conversion
+            if (empty($slug)) {
+                $slug = $this->convertToSlug($data["page_name"]);
+            }
+
+            // Ensure the slug is unique within the project
+            $originalSlug = $slug; // Save the original slug for comparison
+            $counter = 1; // Initialize the counter for uniqueness check
+
+            // Check if slug exists and increment the counter
+            while (
+                WebPage::where('slug', $slug)
+                    ->where('website_id', $this->project->project_id)
+                    ->where('id', '!=', $pageId) // Exclude the current page
+                    ->exists()
+            ) {
+                // Append the counter to the slug
+                $slug = $originalSlug . '-' . $counter;
+                $counter++; // Increment the counter for the next iteration
+            }
+
+            if (isset($data["page_title"]) && !empty($data["page_title"])) {
+                $title = $data["page_title"];
+            } else {
+                $title = $data["page_name"] . " - " . $this->project->project_name;
+            }
+
+
 
             $page->update([
-                'title' => $data['page_title'],
+                'title' => $title,
                 'meta_description' => $data['meta_description'],
                 'og' => $data['og_tags'],
                 'embed_code_start' => $data['header_embed_code'],
                 'embed_code_end' => $data['footer_embed_code'],
+                'slug' => $slug,
             ]);
 
             Notification::make()->success()->title('Page data updated successfully.')->send();
@@ -318,9 +376,9 @@ new class extends Component implements HasForms {
     }
 
     // Update the main page
-    public function pageMain()
+    public function pageMain($pageId)
     {
-        $pageInstance = WebPage::find($this->selectedPage); // Find the selected page
+        $pageInstance = WebPage::find($pageId); // Find the selected page
         if ($pageInstance) {
 
 
@@ -342,6 +400,106 @@ new class extends Component implements HasForms {
         }
     }
 
+
+
+    public function headerFooterCreate(){
+
+
+        // Get the data from the request
+        $websiteId = $this->project->project_id;  // Website ID
+        $jsonData = ;          // JSON data for settings
+        $html = '<body>
+                          <div id="ipfdz">
+                            <meta charset="UTF-8" id="iy6j4k"/>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                            <title>Header, Footer, and Placeholder</title>
+                            <header id="irlgrx">
+                              <h1 id="i2w90u">Header</h1>
+                            </header>
+                            <main class="placeholder">
+                              <h2 id="ir6tb3">This is a placeholder content section</h2>
+                              <p id="iug63u">When you Live or preview your website, this will be replaced with actual content.</p>
+                            </main>
+                            <footer>
+                              <p>© Footer</p>
+                            </footer>
+                          </div>
+                        </body>';              // HTML content
+        $css = '* {
+                        box-sizing: border-box;
+                      }
+                      body {
+                        margin: 0;
+                      }
+                      * {
+                        margin-top: 0px;
+                        margin-right: 0px;
+                        margin-bottom: 0px;
+                        margin-left: 0px;
+                        padding-top: 0px;
+                        padding-right: 0px;
+                        padding-bottom: 0px;
+                        padding-left: 0px;
+                        box-sizing: border-box;
+                      }
+                      body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: rgb(51, 51, 51);
+                      }
+                      footer {
+                        text-align: center;
+                        padding-top: 1rem;
+                        padding-right: 2rem;
+                        padding-bottom: 1rem;
+                        padding-left: 2rem;
+                        background-color: rgb(34, 34, 34);
+                        color: white;
+                        font-size: 0.9rem;
+                        height: 80px;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                      }
+                      header {
+                        height: 100px;
+                        background-color: rgb(51, 51, 51);
+                        color: white;
+                        text-align: center;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                      }
+                      .placeholder {
+                        height: calc(-180px + 100vh);
+                        background-color: rgb(244, 244, 244);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        text-align: center;
+                      }
+                      .placeholder h2 {
+                        font-size: 2rem;
+                        color: rgb(51, 51, 51);
+                      }
+                      .placeholder p {
+                        font-size: 1.2rem;
+                        color: rgb(102, 102, 102);
+                      }
+                      #irlgrx {
+                        color: white;
+                        background-color: #333333;
+                      }';                // CSS content
+
+
+        // Create a new header and footer record
+        $headerFooter = HeaderFooter::create([
+            'website_id' => $websiteId,
+            'json' => $jsonData,
+            'html' => $html,
+            'css' => $css
+        ]);
+    }
 }
 ?>
 
@@ -356,261 +514,358 @@ new class extends Component implements HasForms {
                     <!-- Display the current project name as a heading -->
                     <x-app.heading title="Website: {{ $this->project->project_name }}"
                         description="Manage your website's details and settings." :border="false" />
-                        <x-button tag="a" :href="route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name])">Open In Builder</x-button>
+                    <x-button tag="a" :href="route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name])" target="_blank">Open In Builder</x-button>
                 </div>
                 <!-- Tabs Navigation -->
                 <div class="mb-6 border-b border-gray-200">
                     <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
                         <li class="mr-2">
-                            <a href="#overview"
-                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="overview">Overview</a>
+                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg" data-tab="overview">Overview</a>
                         </li>
                         <li class="mr-2">
-                            <a href="#header/footer" id="headerfooter"
-                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="header-footer">Header/Footer</a>
+                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg"
+                                data-tab="header-footer">Header/Footer</a>
                         </li>
                         <li class="mr-2">
-                            <a href="#pages"
-                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="pages">Pages</a>
+                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg" data-tab="pages">Pages</a>
                         </li>
                         <li class="mr-2">
-                            <a wire:click="websiteSettingsSetForm" href="#webiste_settings"
-                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="website-settings">Website Settings</a>
+                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg"
+                                data-tab="website-settings">Website Settings</a>
                         </li>
                         <li class="mr-2">
-                            <a wire:click="$set('activeTab', 'live_settings')" href="#live_settings"
-                                class="tab-btn inline-block p-4 rounded-t-lg" data-tab="live-settings">Live Settings</a>
+                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg" data-tab="live-settings">Live
+                                Settings</a>
                         </li>
                     </ul>
                 </div>
                 <!-- Overview Tab Content -->
-                
-                    <div id="overview" class="hidden space-y-6 tab-panel">
-                        <!-- Website Name -->
-                        <div class="flex items-center justify-between">
-                            <h2 class="text-2xl font-semibold">{{ $this->project->project_name }}</h2>
-                            <div class="text-sm text-gray-500">Project Name</div>
-                        </div>
 
-                        <!-- Description -->
-                        <div class="space-y-2">
-                            <h3 class="text-lg font-medium">Description</h3>
-                            <p class="text-gray-700">{{ $this->project->description ?? 'No description available' }}</p>
-                        </div>
-
-                        <!-- Domain or URL -->
-                        <div class="space-y-2">
-                            <h3 class="text-lg font-medium">Live Website</h3>
-                            @if($this->project->domain)
-                                <a href="{{ 'https://' . $this->project->domain . '.test.wpengineers.com' }}"
-                                    class="text-blue-600 hover:underline"
-                                    target="_blank">{{ 'https://' . $this->project->domain . '.test.wpengineers.com' }}</a>
-                            @else
-                                <p class="text-gray-500">No domain assigned</p>
-                            @endif
-                        </div>
-
-                        <!-- Live Status Indicator -->
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium mr-2">Status:</span>
-                            @if($this->project->live)
-                                <span class="text-green-500">Live</span>
-                            @else
-                                <span class="text-red-500">Not Live</span>
-                            @endif
-                        </div>
+                <div id="overview" class="hidden space-y-6 tab-panel">
+                    <!-- Website Name -->
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-semibold">{{ $this->project->project_name }}</h2>
+                        <div class="text-sm text-gray-500">Project Name</div>
                     </div>
 
+                    <!-- Description -->
+                    <div class="space-y-2">
+                        <h3 class="text-lg font-medium">Description</h3>
+                        <p class="text-gray-700">{{ $this->project->description ?? 'No description available' }}</p>
+                    </div>
 
-                
-                    <!-- Website Settings Box -->
-                    <div id="website-settings" class="hidden tab-panel">
+                    <!-- Domain or URL -->
+                    <div class="space-y-2">
+                        <h3 class="text-lg font-medium">Live Website</h3>
+                        @if($this->project->domain)
+                            <a href="{{ 'https://' . $this->project->domain . '.test.wpengineers.com' }}"
+                                class="text-blue-600 hover:underline"
+                                target="_blank">{{ 'https://' . $this->project->domain . '.test.wpengineers.com' }}</a>
+                        @else
+                            <p class="text-gray-500">No domain assigned</p>
+                        @endif
+                    </div>
+
+                    <!-- Live Status Indicator -->
+                    <div class="flex items-center">
+                        <span class="text-sm font-medium mr-2">Status:</span>
+                        @if($this->project->live)
+                            <span class="text-green-500">Live</span>
+                        @else
+                            <span class="text-red-500">Not Live</span>
+                        @endif
+                    </div>
+                </div>
+
+
+
+                <!-- Website Settings Box -->
+                <div id="website-settings" class="hidden tab-panel">
                     <form wire:submit="edit" class="space-y-6">
                         <h2 class="text-lg font-semibold mb-4">Website Settings</h2>
 
-                            <!-- Render the form fields here -->
-                            {{ $this->form }}
+                        <!-- Render the form fields here -->
+                        {{ $this->form }}
 
-                            <div class="flex justify-end gap-x-3">
-                                <!-- Cancel Button -->
-                                <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
+                        <div class="flex justify-end gap-x-3">
+                            <!-- Cancel Button -->
+                            <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
 
-                                <!-- Save Changes Button -->
-                                <x-button type="button" wire:click="edit"
-                                    class="text-white bg-primary-600 hover:bg-primary-500">Save
-                                    Changes</x-button>
+                            <!-- Save Changes Button -->
+                            <x-button type="button" wire:click="edit"
+                                class="text-white bg-primary-600 hover:bg-primary-500">Save
+                                Changes</x-button>
 
-                                    <!-- Dropdown for More Actions -->
-                                    <x-dropdown class="text-gray-500">
-                                        <x-slot name="trigger">
-                                            <x-button type="button" color="gray">More Actions</x-button>
-                                        </x-slot>
+                            <!-- Dropdown for More Actions -->
+                            <x-dropdown class="text-gray-500">
+                                <x-slot name="trigger">
+                                    <x-button type="button" color="gray">More Actions</x-button>
+                                </x-slot>
 
-                                        <!-- Duplicate Website -->
-                                    <a href="#" wire:click="duplicate"
-                                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
-                                        <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Website
-                                    </a>
+                                <!-- Duplicate Website -->
+                                <a href="#" wire:click="duplicate"
+                                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                                    <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Website
+                                </a>
 
-                                    <!-- Save as My Template -->
-                                    <a href="#" wire:click="saveAsPrivateTemplate"
-                                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
-                                        <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as My Template
-                                    </a>
+                                <!-- Save as My Template -->
+                                <a href="#" wire:click="saveAsPrivateTemplate"
+                                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                                    <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as My Template
+                                </a>
 
-                                    <!-- Delete Website -->
-                                    <a href="#" wire:click="delete"
+                                <!-- Delete Website -->
+                                <a href="#" wire:click="delete"
                                     class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
-                                        <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Website
-                                    </a>
-                                </x-dropdown>
-                            </div>
-                        </form>
-                    </div>
-
-               
-                    <div id="pages" class="hidden tab-panel">
-                                        <h2 class="text-lg font-semibold mb-4">Pages Meta Data</h2>
-                                        <div class="space-y-4 mt-4">
-@foreach($this->pages as $page)
-    <div class="bg-white p-6 rounded-md shadow-md">
-        <div class="flex justify-between items-center">
-            <button type="button" class="text-lg font-semibold text-left w-full toggle-page"
-                data-page-id="{{ $page->id }}">
-                {{ $page->name }}
-            </button>
-        </div>
-
-        <div class="collapse-content mt-4" id="page-{{ $page->id }}" style="display: none;">
-            <div class="space-y-3">
-                <div class="space-y-6 bg-white p-6 rounded-lg shadow">
-                    <!-- Page Name (Read-only) -->
-                    <div class="form-group">
-                        <label for="page_name_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Page Name</label>
-                        <input type="text" id="page_name_{{ $page->id }}" 
-
-                            wire:model="pageData.{{$page->id}}.page_name" 
-                            readonly
-                            class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-                    </div>
-
-                    <!-- Page Title -->
-                    <div class="form-group">
-                        <label for="page_title_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Page Title</label>
-                        <input type="text" id="page_title_{{ $page->id }}" 
-
-                            wire:model="pageData.{{$page->id}}.page_title" 
-                            class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-                    </div>
-
-                    <!-- Meta Description -->
-                    <div class="form-group">
-                        <label for="page_meta_description_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Meta Description</label>
-                        <textarea id="page_meta_description_{{ $page->id }}" 
-                            wire:model="pageData.{{$page->id}}.meta_description" 
-                            rows="3" class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-
-                        </textarea>
-                    </div>
-
-                    <!-- Open Graph Tags -->
-                    <div class="form-group">
-                        <label for="page_og_tags_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Open Graph Tags</label>
-                        <textarea id="page_og_tags_{{ $page->id }}" 
-                            wire:model="pageData.{{$page->id}}.og_tags" 
-                            rows="3" class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-                        </textarea>
-                    </div>
-
-                    <!-- Header Embed Code -->
-                    <div class="form-group">
-                        <label for="page_header_embed_code_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Header Embed Code</label>
-                        <textarea id="page_header_embed_code_{{ $page->id }}" 
-                            wire:model="pageData.{{$page->id}}.header_embed_code" 
-                            rows="3" class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-                        </textarea>
-                    </div>
-
-                    <!-- Footer Embed Code -->
-                    <div class="form-group">
-                        <label for="page_footer_embed_code_{{ $page->id }}" class="block text-sm font-medium text-gray-700">Footer Embed Code</label>
-                        <textarea id="page_footer_embed_code_{{ $page->id }}" 
-                            wire:model="pageData.{{$page->id}}.footer_embed_code" 
-                            rows="3" class="form-control block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-                        </textarea>
-                    </div>
-
-                    <!-- Save Changes Button -->
-                    <x-button type="button" wire:click="pageUpdate({{ $page->id }})"
-                        class="text-white bg-primary-600 hover:bg-primary-500">Save Changes</x-button>
+                                    <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Website
+                                </a>
+                            </x-dropdown>
+                        </div>
+                    </form>
                 </div>
-            </div>
-        </div>
-    </div>
-@endforeach
 
+                <!-- Pages Box -->
+                <div id="pages" class="hidden tab-panel">
+                    <h2 class="text-lg font-semibold mb-4">Pages Meta Data</h2>
+                    <div class="space-y-4 mt-4">
+                        @foreach($this->pages as $page)
+                            <div class="bg-white p-6 rounded-md shadow-md">
+                                <div class="flex justify-between items-center">
+                                    <button type="button" class="text-lg font-semibold text-left w-full toggle-page"
+                                        data-page-id="{{ $page->id }}">
+                                        {{ $page->name }}
+                                        @if($page->main) <!-- Assuming 'is_main' indicates the main page -->
+                                            <span
+                                                class="ml-2 text-xs font-medium text-white bg-green-500 px-2 py-1 rounded-full">
+                                                Main Page
+                                            </span>
+                                        @endif
+                                    </button>
+                                </div>
+
+                                <div class="collapse-content mt-4" id="page-{{ $page->id }}" style="display: none;">
+                                    <div class="space-y-3">
+                                        <div class="space-y-6">
+                                            <!-- Page Title -->
+                                            <div class="form-group grid gap-y-2">
+                                                <label for="page_title_{{ $page->id }}" class="block">
+                                                    <span
+                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                        Page Title
+                                                    </span></label>
+                                                <div
+                                                    class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden">
+                                                    <input placeholder="Enter page title" type="text"
+                                                        id="page_title_{{ $page->id }}"
+                                                        wire:model="pageData.{{$page->id}}.page_title"
+                                                        class="form-control fi-input block w-full border-none py-1.5 text-base text-gray-950 transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 bg-white/0 ps-3 pe-3">
+                                                </div>
+                                            </div>
+
+
+                                            <!-- Page Slug -->
+                                            <div class="form-group grid gap-y-2">
+                                                <label for="page_slug_{{ $page->id }}" class="block">
+                                                    <span
+                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                        Page Slug
+                                                    </span></label>
+                                                <div
+                                                    class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden">
+                                                    <input pattern="^[A-Za-z0-9\s-]+$"
+                                                        title="Slug should only contain letters, numbers and hyphens (-)."
+                                                        placeholder="Enter a unique page slug" type="text"
+                                                        id="page_slug_{{ $page->id }}"
+                                                        wire:model="pageData.{{$page->id}}.page_slug"
+                                                        class="form-control fi-input block w-full border-none py-1.5 text-base text-gray-950 transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 bg-white/0 ps-3 pe-3">
+                                                </div>
+                                            </div>
+
+
+                                            <!-- Meta Description -->
+                                            <div class="form-group grid gap-y-2">
+                                                <label for="page_meta_description_{{ $page->id }}" class="block">
+                                                    <span
+                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                        Meta Description
+                                                    </span></label>
+                                                <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
+                                                                                [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+                                                                                [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
+                                                                                dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+                                                                                ">
+                                                    <textarea placeholder="Describe your page" rows="5" id="page_meta_description_{{ $page->id }}"
+                                                        wire:model="pageData.{{$page->id}}.meta_description" rows="3"
+                                                        class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
+                                                                                                                        </textarea>
+                                                </div>
+                                                </div>
+
+                                            <!-- Open Graph Tags -->
+                                            <div class="form-group grid gap-y-2">
+                                                <label for="page_og_tags_{{ $page->id }}" class="block">
+                                                    <span
+                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                        Open Graph Tags
+                                                    </span></label>
+                                                <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
+                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
+                                                                    dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+                                                                    ">
+                                                    <textarea placeholder="Add open graph tag for your page" rows="5"
+                                                        id="page_og_tags_{{ $page->id }}"
+                                                        wire:model="pageData.{{$page->id}}.og_tags" rows="3"
+                                                        class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
+                                                        </textarea>
+                                                </div>
+                                            </div>
+
+                                            <!-- Header Embed Code -->
+                                            <div class="form-group grid gap-y-2">
+                                                <label for="page_header_embed_code_{{ $page->id }}" class="block">
+                                                    <span
+                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                        Header Embed Code
+                                                    </span></label>
+                                                <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
+                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
+                                                                    dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+                                                                    ">
+                                                    <textarea placeholder="Add custom embed code for the header" rows="5"
+                                                        id="page_header_embed_code_{{ $page->id }}"
+                                                        wire:model="pageData.{{$page->id}}.header_embed_code" rows="3"
+                                                        class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
+                                                        </textarea>
+                                                </div>
+                                            </div>
+
+                                            <!-- Footer Embed Code -->
+                                            <div class="form-group grid gap-y-2">
+                                                <label for="page_footer_embed_code_{{ $page->id }}" class="block">
+                                                    <span
+                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                        Footer Embed Code
+                                                    </span></label>
+                                                <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
+                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
+                                                                    dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+                                                                    ">
+                                                    <textarea placeholder="Add custom embed code for the footer" rows="5"
+                                                        id="page_footer_embed_code_{{ $page->id }}"
+                                                        wire:model="pageData.{{$page->id}}.footer_embed_code" rows="3"
+                                                        class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
+                                                        </textarea>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex justify-end gap-x-3">
+                                                <!-- Cancel Button -->
+                                                <x-button class="page-cancel" type="button"
+                                                    color="secondary">Cancel</x-button>
+
+                                                <!-- mainpage Button -->
+                                                <x-button type="button" wire:click="pageMain({{ $page->id }})"
+                                                    class="text-white bg-primary-600 hover:bg-primary-500">Set as Main
+                                                    Page</x-button>
+
+                                                <!-- Save Changes Button -->
+                                                <x-button type="button" wire:click="pageUpdate({{ $page->id }})"
+                                                    class="text-white bg-primary-600 hover:bg-primary-500">Save
+                                                    Changes</x-button>
+                                            </div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+
                     </div>
+                </div>
+
+                <!-- Header/Footer Box -->
+                <div id="header-footer" class="hidden space-y-6 tab-panel">
+
+                    <div class="flex items-center justify-between mb-5">
+                        <!-- Display the current project name as a heading -->
+                        <x-app.heading title="Header and Footer"
+                            description="Edit your website's Header and Footer." :border="false" />
+                        <x-button tag="a"
+                            :href="route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name])" target="_blank">Edit In Builder</x-button>
+                    </div>
+                    <!-- Save Changes Button -->
+                    <x-button type="button" wire:click="headerFooterCreate"
+                        class="text-white bg-primary-600 hover:bg-primary-500">Create Header and Footer</x-button>
+                </div>
 
 
-                
-                    
-                
+                <!-- Live Settings Box -->
+                <div id="live-settings" class="hidden space-y-6 tab-panel">Live</div>
+
+
             </div>
         </div>
 
-@script          
-<script>
-        const tabs = document.querySelectorAll(".tab-btn");
-        const panels = document.querySelectorAll(".tab-panel");
+        @script
+        <script>
+            const tabs = document.querySelectorAll(".tab-btn");
+            const panels = document.querySelectorAll(".tab-panel");
 
-    tabs.forEach(tab => {
-        tab.addEventListener("click", () => {
-            // Hide all panels
-            panels.forEach(panel => {
-                panel.classList.add("hidden");
-                console.log("hiding this", panel.id);
-            });
-            console.log("hide complete");
-
-            // Remove the custom border classes from all tabs
             tabs.forEach(tab => {
-                tab.classList.remove("border-b-2", "border-blue-500");
+                tab.addEventListener("click", () => {
+                    // Hide all panels
+                    panels.forEach(panel => {
+                        panel.classList.add("hidden");
+                        console.log("hiding this", panel.id);
+                    });
+                    console.log("hide complete");
+
+                    // Remove the custom border classes from all tabs
+                    tabs.forEach(tab => {
+                        tab.classList.remove("border-b-2", "border-blue-500");
+                    });
+
+
+                    const target = document.getElementById(tab.dataset.tab);
+                    target.classList.remove("hidden");
+                    console.log("showing complete");
+
+                    // Add active class to the clicked tab
+                    tab.classList.add("border-b-2", "border-blue-500");
+                });
+
+                // Optional: Show the first tab by default
+                tabs[0].click();
+            })
+
+
+
+            const toggleButtons = document.querySelectorAll('.toggle-page');
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const pageId = this.getAttribute('data-page-id');
+                    const content = document.getElementById('page-' + pageId);
+                    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                });
             });
 
-
-           // Delay the removal of the "hidden" class for the clicked tab's panel
-            setTimeout(() => {
-                const target = document.getElementById(tab.dataset.tab);
-                target.classList.remove("hidden");
-                console.log("showing complete");
-
-                // Add active class to the clicked tab
-                tab.classList.add("border-b-2", "border-blue-500");
-            }, 0);
-        });
-
-        // Optional: Show the first tab by default
-        tabs[0].click();
-    })
-
-
-
-    const toggleButtons = document.querySelectorAll('.toggle-page');
-        toggleButtons.forEach(button => {
-            button.addEventListener('click', function () {
-                const pageId = this.getAttribute('data-page-id');
-                const content = document.getElementById('page-' + pageId);
-                content.style.display = content.style.display === 'none' ? 'block' : 'none';
+            // Adding event listener to the Cancel buttons
+            const cancelButtons = document.querySelectorAll('.page-cancel');
+            cancelButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const pageId = this.closest('.collapse-content').getAttribute('id').replace('page-', '');
+                    const content = document.getElementById('page-' + pageId);
+                    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                });
             });
-        });
-</script>
-@endscript
 
-        
+        </script>
+        @endscript
+
+
 
     </x-app.container>
     @endvolt
 </x-layouts.app>
-
-

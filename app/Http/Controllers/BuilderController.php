@@ -8,6 +8,7 @@ use App\Models\WebPage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use ZipArchive;
 
 
@@ -307,6 +308,7 @@ class BuilderController extends Controller
         if (!$project || $project->user_id != auth()->id()) {
             abort(404); // Prevent unauthorized access to other user's projects
         }
+        $slug = Str::slug($request->name);
             // Create the new page
             $page = WebPage::create([
                 'name' => $request->name,
@@ -316,6 +318,7 @@ class BuilderController extends Controller
                 'title' => $request->name . " - " . $project->project_name,
                 'html' => '<body></body>',
                 'css' => '* { box-sizing: border-box; } body {margin: 0;}',
+                'slug' => $slug,
             ]);
 
             return response()->json(['success' => true, 'page' => $page]);

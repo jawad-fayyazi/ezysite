@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Filament\Notifications\Notification;
 use App\Models\Project;
 use App\Models\WebPage;
+use App\Models\HeaderFooter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -380,10 +381,222 @@ class BuilderController extends Controller
     public function pageHtmlCss(Request $request)
     {
         $page = WebPage::where('page_id', $request->pageId)->first();
+        // If the page doesn't exist, return 404
+        // Check if header and footer data exists
+        if (!$page) {
+            return response()->json(['error' => 'Page not found'], 404);
+        }
         $page->html = $request->html; // Assuming `html_content` is the column name
         $page->css = $request->css; // Assuming `css_content` is the column name
         $page->save();
 
         return response()->json(['success' => true, 'message' => 'Page content saved successfully!']);
     }
+
+
+
+    public function headerEdit($project_id)
+    {
+        // Fetch the project from the database using the project_id
+        $project = Project::find($project_id);
+
+        // If the project doesn't exist, return 404
+        if (!$project || $project->user_id != auth()->id()) {
+            abort(404); // Prevent unauthorized access to other user's projects
+        }
+
+        // Load header and footer for the project (if not created, create defaults)
+        $header = HeaderFooter::where("website_id", $project_id)
+            ->where("is_header", true)
+            ->first();
+
+
+
+        // If no entry exists, create a new one, otherwise update the existing one
+        if (!$header) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Header not found.'
+            ], 404); // Not found
+        }
+
+
+
+        // Pass the project to the view
+        return view('header-footer.index', [
+            'project' => $project,
+            'project_name' => $project->project_name,
+            'project_id' => $project->project_id,
+            'is_header' => $header->is_header,
+        ]);
+    }
+
+
+    public function footerEdit($project_id)
+    {
+        // Fetch the project from the database using the project_id
+        $project = Project::find($project_id);
+
+        // If the project doesn't exist, return 404
+        if (!$project || $project->user_id != auth()->id()) {
+            abort(404); // Prevent unauthorized access to other user's projects
+        }
+
+        // Load header and footer for the project (if not created, create defaults)
+        $footer = HeaderFooter::where("website_id", $project_id)
+            ->where("is_header", false)
+            ->first();
+
+        // If no entry exists, create a new one, otherwise update the existing one
+        if (!$footer) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Footer not found.'
+            ], 404); // Not found
+        }
+
+        // Pass the project to the view
+        return view('header-footer.index', [
+            'project' => $project,
+            'project_name' => $project->project_name,
+            'project_id' => $project->project_id,
+            'is_header' => $footer->is_header,
+        ]);
+    }
+
+    public function saveHeader($project_id, Request $request)
+    {
+        $headerJson = $request->getContent();
+
+        // Make sure project_id and project_json are provided
+        if (!$project_id || empty($headerJson)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Project ID or data not provided.'
+            ], 400); // Bad request
+        }
+
+        // Find the header-footer entry for the project
+        $header = HeaderFooter::where("website_id", $project_id)
+            ->where("is_header", true)
+            ->first();
+
+        // If no entry exists, create a new one, otherwise update the existing one
+        if (!$header) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Header & Footer not found.'
+            ], 404); // Not found
+        }
+
+        // Update existing entry
+        $header->update([
+            'json' => $headerJson,
+        ]);
+
+        // Return a success response
+        return response()->json(['message' => 'Header saved successfully!']);
+    }
+
+    public function saveFooter($project_id, Request $request)
+    {
+        $footerJson = $request->getContent();
+
+        // Make sure project_id and project_json are provided
+        if (!$project_id || empty($footerJson)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Project ID or data not provided.'
+            ], 400); // Bad request
+        }
+
+        // Find the footer-footer entry for the project
+        $footer = HeaderFooter::where("website_id", $project_id)
+            ->where("is_header", false)
+            ->first();
+
+        // If no entry exists, create a new one, otherwise update the existing one
+        if (!$footer) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Footer not found.'
+            ], 404); // Not found
+        }
+
+        // Update existing entry
+        $footer->update([
+            'json' => $footerJson,
+        ]);
+
+        // Return a success response
+        return response()->json(['message' => 'Header saved successfully!']);
+    }
+
+
+    public function loadHeader($project_id)
+    {
+        // Find the header-footer entry for the project
+        $header = HeaderFooter::where("website_id", $project_id)
+            ->where("is_header", true)
+            ->first();
+
+        // Check if header and footer data exists
+        if (!$header) {
+            return response()->json(['error' => 'Header not found'], 404);
+        }
+
+        // Return the HTML and CSS data as JSON
+        return response($header->json, 200)->header('Content-Type', 'application/json');
+    }
+
+    public function loadFooter($project_id)
+    {
+        // Find the header-footer entry for the project
+        $footer = HeaderFooter::where("website_id", $project_id)
+            ->where("is_header", false)
+            ->first();
+
+        // Check if header and footer data exists
+        if (!$footer) {
+            return response()->json(['error' => 'footer not found'], 404);
+        }
+
+        // Return the HTML and CSS data as JSON
+        return response($footer->json, 200)->header('Content-Type', 'application/json');
+    }
+
+
+    public function headerData(Request $request)
+    {
+        $header = HeaderFooter::where("website_id", $request->project_id)
+            ->where("is_header", true)
+            ->first();
+        // Check if header and footer data exists
+        if (!$header) {
+            return response()->json(['error' => 'Header not found'], 404);
+        }
+        $header->html = $request->html; // Assuming `html_content` is the column name
+        $header->css = $request->css; // Assuming `css_content` is the column name
+        $header->save();
+
+        return response()->json(['success' => true, 'message' => 'Header content saved successfully!']);
+    }
+
+
+    public function footerData(Request $request)
+    {
+        $Footer = HeaderFooter::where("website_id", $request->project_id)
+            ->where("is_header", false)
+            ->first();
+        // Check if Footer and footer data exists
+        if (!$Footer) {
+            return response()->json(['error' => 'Footer not found'], 404);
+        }
+        $Footer->html = $request->html; // Assuming `html_content` is the column name
+        $Footer->css = $request->css; // Assuming `css_content` is the column name
+        $Footer->save();
+
+        return response()->json(['success' => true, 'message' => 'Footer content saved successfully!']);
+    }
+
 }

@@ -19,6 +19,7 @@ class HeaderFooter extends Model
         'html',
         'css',
         'json',
+        'is_header',
     ];
 
 

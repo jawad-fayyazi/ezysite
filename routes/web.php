@@ -67,3 +67,26 @@ Route::post('/pages/rename/{id}', [BuilderController::class, 'pageRename']);
 
 
 Route::post('/pages/data', [BuilderController::class, 'pageHtmlCss']);
+
+
+// Route for editing header
+Route::get('/header/{project_id}', [BuilderController::class, 'headerEdit'])->name('header');
+// Route for editing footer
+Route::get('/footer/{project_id}', [BuilderController::class, 'footerEdit'])->name('footer');
+
+// Route to save header data
+Route::post('/header/{project_id}/save', [BuilderController::class, 'saveHeader']);
+
+// Route to save footer data
+Route::post('/footer/{project_id}/save', [BuilderController::class, 'saveFooter']);
+
+
+// Route to load header data
+Route::get('/header/{project_id}/load', [BuilderController::class, 'loadHeader']);
+
+// Route to load footer data
+Route::get('/footer/{project_id}/load', [BuilderController::class, 'loadFooter']);
+
+Route::post('/header/data', [BuilderController::class, 'headerData']);
+
+Route::post('/footer/data', [BuilderController::class, 'footerData']);

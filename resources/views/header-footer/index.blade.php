@@ -22,24 +22,7 @@
 <body>
     <div class="app">
 
-        <!-- Sidebar section (collapsed initially) -->
-        <div class="sidenav-collapse gjs-one-bg gjs-two-color">
-            <i class="fa-solid fa-bars"> </i>
-        </div>
 
-        <div id="side-bar-collpase" class="sidebar gjs-one-bg gjs-two-color">
-            <h1 class="project-name" id="test">{{ $project_name }}</h1> <!-- Display project name -->            
-            <div class="pages-collapse">
-                <i class="fa-solid fa-caret-down"></i> Pages
-            </div>
-            <div id="page-list">
-                <button id="add-page" class="add-page-btn gjs-one-bg gjs-two-color gjs-four-color-h">
-                    <i class="fa-solid fa-plus"></i> &nbsp; Add Page
-                </button>
-                <!-- Dynamic list of pages will go here -->
-                <ul id="pages-ul"></ul>
-            </div>
-        </div>
 
         <!-- GrapesJS container (builder workspace) -->
         <div id="gjs"></div>
@@ -66,22 +49,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+        integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 
     <script>
         // Pass PHP variables to JavaScript
         var projectId = {{ $project_id }};
         var projectName = '{{ $project_name }}';
-         // Ensure $isHeaderFooter is set or default to false
-        var isHeaderFooter = {{ $isHeaderFooter ?? 'false' }};  // If $isHeaderFooter is not set, default to false
+        // Ensure $isHeaderFooter is set or default to false
+        var isHeader = {{ $is_header }};
 
         console.log("Project ID: ", projectId);
         console.log("Project Name: ", projectName);
-        console.log("Is Header/Footer: ", isHeaderFooter);
+        console.log(isHeader);
     </script>
     <!-- Include your custom JS -->
-    <script src="{{ asset('builder/js/script.js') }}"></script>
+    <script src="{{ asset('header-footer/js/script.js') }}"></script>
 
 </body>
 

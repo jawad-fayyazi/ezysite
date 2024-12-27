@@ -9,9 +9,11 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Component;
+use Illuminate\Support\Str;
 use App\Models\Project;
 use App\Models\HeaderFooter;
 use App\Models\PrivateTemplate;
+use App\Models\Subdomain;
 use App\Models\WebPage; // Assuming you have the WebPage model
 use function Laravel\Folio\{middleware, name};
 
@@ -32,6 +34,10 @@ new class extends Component implements HasForms {
     public $footer;
     public $mainPage;
     public $liveData = [];
+    public $shouldRedirect = true; // Flag to control redirection
+    public $ourDomain = ".test.wpengineers.com";
+    public $imageCache = [];
+    public $message = '';
 
 
     // Mount method to set the project_id from the URL and fetch the project
@@ -59,6 +65,9 @@ new class extends Component implements HasForms {
         }
         $this->liveData = [
             'domain' => $this->project->domain,
+            'pages' => [],    // Default empty array for selected pages
+            'header' => true, // Default value for header
+            'footer' => true, // Default value for footer
         ];
 
         // Retrieve pages for the project
@@ -77,6 +86,8 @@ new class extends Component implements HasForms {
             ];
         }
         ;
+
+        $this->liveData['pages'] = $this->pages->pluck('id')->toArray(); // Populate with all page IDs
 
         // Pre-fill the form with existing project data
         $this->form->fill([
@@ -148,12 +159,16 @@ new class extends Component implements HasForms {
 
                 // Logo Uploader
                 FileUpload::make('logo')
-                    ->label('Upload Logo')
+                    ->label('Upload Favicon')
                     ->image()
+                    ->imageResizeMode('cover')
+                    ->imageCropAspectRatio('1:1')
+                    ->imageResizeTargetWidth('260')
+                    ->imageResizeTargetHeight('260')
                     ->directory("usersites/{$this->project->project_id}")
                     ->disk('public')
                     ->maxSize(1024)
-                    ->helperText('Upload a logo for your website'),
+                    ->helperText('Upload a favicon for your website'),
 
                 // Robots.txt Textarea
                 Textarea::make('robots_txt')
@@ -266,6 +281,9 @@ new class extends Component implements HasForms {
                     // Use storeAs to save the file on the public disk
                     Storage::disk('public')->move($file, $newPath);
                     Storage::disk('public')->delete($file);
+                     $this->project->update([
+                        'favicon' => "{$this->project->project_id}." . pathinfo($file, PATHINFO_EXTENSION),
+                     ]);
                 } catch (\Exception $e) {
                     Notification::make()
                         ->danger()
@@ -310,12 +328,6 @@ new class extends Component implements HasForms {
             ->send();
 
         $this->redirect('/websites');
-    }
-
-
-    public function check()
-    {
-        dd($this->pageData);
     }
 
     public function convertToSlug($string)
@@ -520,10 +532,583 @@ new class extends Component implements HasForms {
 
 
 
-    public function liveWebsite(){
-        dd($this->liveData);
+    public function liveWebsite()
+    {
+        // Access liveData array
+        $domain = $this->liveData['domain'];
+        $pages = $this->liveData['pages']; // Selected pages array
+        $header = $this->liveData['header'];
+        $footer = $this->liveData['footer'];
+
+        // Check if domain is empty
+        if (empty($domain)) {
+            // Generate a default domain using the project's name or a unique identifier
+            $defaultDomain = Str::slug($this->project->project_name) . '-' . uniqid();
+            $domain = $defaultDomain;
+        } else {
+            // Append subdomain suffix if not already present
+            $domain = Str::slug($domain);
+        }
+
+        // Update project domain
+        $this->project->update([
+            'domain' => $domain,
+        ]);
+
+
+        // Check if at least one page is selected
+        if (empty($pages)) {
+            if($this->shouldRedirect){
+                Notification::make()
+                    ->danger()
+                    ->title('Error: No Pages Selected')
+                    ->body('You must select at least one page to make the website live.')
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            }
+            else{
+                return [
+                    'status' => 'danger',
+                    'title' => 'No Pages Selected',
+                    "body" => 'You must select at least one page to make the website live.',
+                ];
+            }
+        }
+
+        // Ensure the target folder exists
+        $targetFolder = "/var/www/domain/{$domain}";
+        if (!file_exists($targetFolder)) {
+            if (!mkdir($targetFolder, 0755, true)) {
+
+
+                if ($this->shouldRedirect) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Domain Configuration Error')
+                        ->body("Failed to create directory for the domain: {$domain}")
+                        ->send();
+
+                    return redirect('/websites' . '/' . $this->project->project_id);
+                } else {
+                    return [
+                        'status' => 'danger',
+                        'title' => 'Domain Configuration Error',
+                        "body" => "Failed to create directory for the domain: {$domain}",
+                    ];
+                }
+                
+            }
+        }
+
+
+
+        // Fetch header and footer if required
+        $headerHtml = '';
+        $headerCss = '';
+        $footerHtml = '';
+        $footerCss = '';
+
+        // Fetch header and footer data
+        if ($header) {
+            $header = HeaderFooter::where("website_id", $this->project->project_id)
+                ->where("is_header", true)
+                ->first();
+            $headerHtml = $header->html;
+            $headerCss = $header->css;
+        }
+
+        if ($footer) {
+            $footer = HeaderFooter::where("website_id", $this->project->project_id)
+                ->where("is_header", false)
+                ->first();
+            $footerHtml = $footer->html;
+            $footerCss = $footer->css;
+        }
+        $favIcon = '';
+        $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/logo/{$this->project->favicon}";
+        if(File::exists($sourcePath)){
+            
+            $destinationPath = $targetFolder . "/img/{$this->project->favicon}";
+            $result = $this->copyImage($sourcePath, $destinationPath);
+            if ($result === 'danger'){
+                Notification::make()
+                    ->danger()
+                    ->title('Favicon not found')
+                    ->send();
+            }
+            $favIcon = "/img/{$this->project->favicon}";
+        }
+
+
+        // Process the HTML to replace base64 images
+        $headerHtml = preg_replace_callback('/<img[^>]+src=["\']([^"\']+)["\']/i', function ($matches) use ($domain) {
+            $imageSrc = $matches[1];
+
+            // Check if the image source starts with "data:"
+            if (strpos($imageSrc, 'data:') === 0) {
+                // Save the base64 image and get the new file path
+                $newSrc = $this->saveBase64Image($imageSrc, $domain);
+
+                // Check if there was an error (false return value)
+                if ($newSrc === false) {
+                    // If saving the base64 image failed, leave the original src
+                    return $matches[0]; // Return the original <img> tag with its current src
+                }
+
+                // If the image was successfully saved, replace the src in the <img> tag
+                return str_replace($imageSrc, $newSrc, $matches[0]);
+
+            }
+
+            // If it's not a base64 image, return the original HTML
+            return $matches[0];
+
+        }, $headerHtml);
+
+
+        // Process the HTML to replace base64 images
+        $footerHtml = preg_replace_callback('/<img[^>]+src=["\']([^"\']+)["\']/i', function ($matches) use ($domain) {
+            $imageSrc = $matches[1];
+
+            // Check if the image source starts with "data:"
+            if (strpos($imageSrc, 'data:') === 0) {
+                // Save the base64 image and get the new file path
+                $newSrc = $this->saveBase64Image($imageSrc, $domain);
+
+                // Check if there was an error (false return value)
+                if ($newSrc === false) {
+                    // If saving the base64 image failed, leave the original src
+                    return $matches[0]; // Return the original <img> tag with its current src
+                }
+
+                // If the image was successfully saved, replace the src in the <img> tag
+                return str_replace($imageSrc, $newSrc, $matches[0]);
+
+            }
+
+            // If it's not a base64 image, return the original HTML
+            return $matches[0];
+
+        }, $footerHtml);
+
+
+
+        // Fetch and process each selected page
+        foreach ($pages as $pageId) {
+            $page = WebPage::find($pageId);
+
+            if (!$page) {
+                if ($this->shouldRedirect) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Page not found')
+                        ->body("Failed to fetch page with ID: {$pageId}")
+                        ->send();
+
+                    return redirect('/websites' . '/' . $this->project->project_id);
+                } else {
+                    return [
+                        'status' => 'danger',
+                        'title' => 'Page not found',
+                        "body" => "Failed to fetch page with ID: {$pageId}",
+                    ];
+                }
+            }
+
+            $pageHtml = $page->html;
+            $pageCss = $page->css;
+            $title = $page->title;
+            $slug = $page->slug;
+            $metaDescription = $page->meta_description ?? '';
+            $ogTags = $page->og_tags ?? '';
+            $headerEmbed = $page->header_embed_code ?? '';
+            $footerEmbed = $page->footer_embed_code ?? '';
+
+
+
+
+            // Process the HTML to replace base64 images
+            $updatedPageHtml = preg_replace_callback('/<img[^>]+src=["\']([^"\']+)["\']/i', function ($matches) use ($domain) {
+                $imageSrc = $matches[1];
+
+                // Check if the image source starts with "data:"
+                if (strpos($imageSrc, 'data:') === 0) {
+                    // Save the base64 image and get the new file path
+                    $newSrc = $this->saveBase64Image($imageSrc, $domain);
+
+                    // Check if there was an error (false return value)
+                    if ($newSrc === false) {
+                        // If saving the base64 image failed, leave the original src
+                        return $matches[0]; // Return the original <img> tag with its current src
+                    }
+
+                    // If the image was successfully saved, replace the src in the <img> tag
+                    return str_replace($imageSrc, $newSrc, $matches[0]);
+                    
+                }
+
+                // If it's not a base64 image, return the original HTML
+                return $matches[0];
+
+            }, $pageHtml);
+
+
+
+            // Build full HTML
+            $html = $this->buildFullHtml([
+                'title' => $title,
+                'meta_description' => $metaDescription,
+                'og_tags' => $ogTags,
+                'fav_icon' => $favIcon,
+                'header_embed' => $headerEmbed,
+                'footer_embed' => $footerEmbed,
+                'header_html' => $headerHtml,
+                'header_css' => $headerCss,
+                'footer_html' => $footerHtml,
+                'footer_css' => $footerCss,
+                'page_html' => $updatedPageHtml,
+                'page_css' => $pageCss,
+            ]);
+
+            // Determine filename
+            $filename = $page->main ? 'index.html' : "{$slug}.html";
+
+            // Save the HTML file
+            if (!file_put_contents("{$targetFolder}/{$filename}", $html)) {
+                if ($this->shouldRedirect) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Page file Error')
+                        ->body("Failed to write HTML file for page: {$slug}")
+                        ->send();
+
+                    return redirect('/websites' . '/' . $this->project->project_id);
+                } else {
+                    return [
+                        'status' => 'danger',
+                        'title' => 'Page file Error',
+                        "body" => "Failed to write HTML file for page: {$slug}",
+                    ];
+                }
+            }
+        }
+
+        // Update project domain
+        $this->project->update([
+            'live' => true,
+        ]);
+
+
+        if ($this->shouldRedirect) {
+            Notification::make()
+                ->success()
+                ->title('Website successfully made live at ' . $domain . $this->ourDomain)
+                ->send();
+            // Redirect or refresh logic
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+        else{
+            return [
+                'status' => 'success',
+            ];
+        }
     }
 
+
+    // Function to handle base64 image and save it
+    public function saveBase64Image($base64Image, $domain)
+    {
+        // Extract the image type from the base64 string (before the comma)
+        preg_match('/data:image\/([a-zA-Z]*);base64/', $base64Image, $matches);
+
+        // If no image type is found, return false
+        if (!isset($matches[1])) {
+            return false;
+        }
+
+        // Get the file extension (e.g., jpg, png, etc.)
+        $imageExtension = $matches[1];
+
+        // Check if this image has already been processed by checking in the cache
+        if (isset($this->imageCache[$base64Image])) {
+            // If the image has been processed, reuse the cached file name
+            return "/img/{$this->imageCache[$base64Image]}";
+        }
+
+        // Generate a unique file name with the correct extension
+        $imageName = uniqid() . '.' . $imageExtension;
+
+        // Remove the data:image part of the base64 string to get just the encoded image data
+        $imageData = substr($base64Image, strpos($base64Image, ',') + 1);
+
+        // Decode the base64 image data
+        $imageDataDecoded = base64_decode($imageData);
+
+        // Ensure the decoding was successful
+        if ($imageDataDecoded === false) {
+            return false;
+        }
+
+        // Define the path where the image will be saved
+        $imgPath = "/var/www/domain/{$domain}/img/{$imageName}";
+
+        // Ensure the target directory exists
+        if (!file_exists(dirname($imgPath))) {
+            mkdir(dirname($imgPath), 0755, true);
+        }
+
+        // Save the image to the server
+        if (file_put_contents($imgPath, $imageDataDecoded) === false) {
+            return false;
+        }
+
+        // Store the base64 image content and the generated file name in the cache
+        $this->imageCache[$base64Image] = $imageName;
+
+
+        // Return the relative path of the saved image
+        return "/img/{$imageName}";
+    }
+
+
+
+    private function buildFullHtml($data)
+    {
+        $boilerplate = <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{$data['meta_description']}">
+    {$data['og_tags']}
+    <title>{$data['title']}</title>
+    <style>
+        {$data['header_css']}
+        {$data['page_css']}
+        {$data['footer_css']}
+    </style>
+    <!-- Favicon -->
+    <link rel="icon" href="{$data['fav_icon']}" type="image/png">
+    {$data['header_embed']}
+</head>
+<body>
+    {$data['header_html']}
+    {$data['page_html']}
+    {$data['footer_html']}
+    {$data['footer_embed']}
+</body>
+</html>
+HTML;
+
+        return $boilerplate;
+    }
+
+    public function copyImage($sourcePath, $destinationPath)
+    {
+        // Check if the source file exists
+        if (File::exists($sourcePath)) {
+            // Create the destination folder if it doesn't exist
+            $destinationFolder = dirname($destinationPath);
+            if (!File::exists($destinationFolder)) {
+                if(!File::makeDirectory($destinationFolder, 0755, true)){
+                    return 'danger';
+                }  // Creates the directory with the right permissions
+            }
+
+            // Copy the file to the new destination
+            if (File::copy($sourcePath, $destinationPath)){
+                return "success";
+            } else {
+                return 'danger';
+            }
+        }
+
+        return "danger";
+    }
+    
+    public function deleteLiveWebsite()
+    {
+        // Retrieve the domain associated with the project
+        $domain = $this->project->domain;
+
+        // If the domain is empty, there's no folder to delete
+        if (empty($domain)) {
+            if ($this->shouldRedirect) {
+                Notification::make()
+                    ->danger()
+                    ->title('Domain Error')
+                    ->body("Domain not found for this project.")
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'danger',
+                    'title' => 'Domain Error',
+                    "body" => "Domain not found for this project.",
+                ];
+            }
+        }
+
+        // Define the target folder path
+        $targetFolder = "/var/www/domain/{$domain}";
+
+        // Check if the folder exists
+        if (file_exists($targetFolder)) {
+            // Recursive function to delete files and directories
+            $this->deleteDirectory($targetFolder);
+
+            // Optionally, update the project status to indicate it's no longer live
+            $this->project->update([
+                'live' => false,
+            ]);
+
+
+            if ($this->shouldRedirect) {
+                // Send success notification
+                Notification::make()
+                    ->success()
+                    ->title('Website successfully take down')
+                    ->send();
+                // Redirect or refresh logic
+                return redirect('/websites' . '/' . $this->project->project_id);
+            }
+            else{
+            return [
+                'status' => 'success',
+            ];
+        }
+
+        } else {
+            if ($this->shouldRedirect) {
+                // Handle case where the folder doesn't exist
+                Notification::make()
+                    ->danger()
+                    ->title('No Live Website Found')
+                    ->body('There is no active website associated with this domain.')
+                    ->send();
+                // Redirect or refresh logic
+                return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'danger',
+                    'title' => 'No live website found for this domain',
+                    'body' => 'There is no active website associated with this domain.',
+                ];
+            }
+        }
+    }
+
+    /**
+     * Recursively delete a directory and its contents.
+     *
+     * @param string $dir
+     * @return void
+     */
+    private function deleteDirectory($dir)
+    {
+        // Check if the directory exists
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        // Get all files and subdirectories inside the target directory
+        $files = array_diff(scandir($dir), ['.', '..']);
+
+        // Loop through files and subdirectories and delete them
+        foreach ($files as $file) {
+            $filePath = $dir . DIRECTORY_SEPARATOR . $file;
+
+            if (is_dir($filePath)) {
+                // Recursively delete subdirectories
+                $this->deleteDirectory($filePath);
+            } else {
+                // Delete the file
+                unlink($filePath);
+            }
+        }
+
+        // Remove the now-empty directory
+        rmdir($dir);
+    }
+
+
+
+    public function updateLiveWebsite()
+    {
+
+        // Temporarily disable redirection
+        $this->shouldRedirect = false;
+
+
+        $delete = $this->deleteLiveWebsite();
+
+
+
+        if ($delete['status'] === 'success'){
+
+            $live = $this->liveWebsite();
+
+        }
+
+        if ($live['status'] === 'danger' || $delete['status'] === 'danger') {
+            // Determine the title and body based on conditions
+            $title = '';
+            $body = '';
+
+            if ($live['status'] === 'danger') {
+                $title = $live['title'];  // Set title for live
+                $body = $live['body'];    // Set body for live
+            }
+
+            if ($delete['status'] === 'danger') {
+                // If both live and delete are danger, append to the title and body
+                $title .= ($title ? ' & ' : '') . $delete['title'];  // If title already set, append delete title
+                $body .= ($body ? ' ' : '') . $delete['body'];       // If body already set, append delete body
+            }
+
+            // Send notification
+            Notification::make()
+                ->danger()
+                ->title($title)
+                ->body($body)
+                ->send();
+
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+         elseif($live['status'] === 'success' && $delete['status'] === 'success'){
+            Notification::make()
+                ->success()
+                ->title('Website updated successfully')
+                ->send();
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+        else {
+            Notification::make()
+                ->danger()
+                ->title('Something Went Wrong')
+                ->body("Please try again later.")
+                ->send();
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+    }
+
+
+    public function domainCheck()
+{
+    if (!$this->liveData['domain']) {
+        $this->message = 'Please enter a subdomain.';
+        return;
+    }
+
+    if (Subdomain::where('subdomain', $this->liveData['domain'])->exists()) {
+        $this->message = 'Subdomain is already taken.';
+    } else {
+        $this->message = 'Subdomain is available.';
+    }
+}
 
 }
 ?>
@@ -584,9 +1169,9 @@ new class extends Component implements HasForms {
                     <div class="space-y-2">
                         <h3 class="text-lg font-medium">Live Website</h3>
                         @if($this->project->domain)
-                            <a href="{{ 'https://' . $this->project->domain . '.test.wpengineers.com' }}"
+                            <a href="{{ 'https://' . $this->project->domain . $this->ourDomain}}"
                                 class="text-blue-600 hover:underline"
-                                target="_blank">{{ 'https://' . $this->project->domain . '.test.wpengineers.com' }}</a>
+                                target="_blank">{{ 'https://' . $this->project->domain . $this->ourDomain}}</a>
                         @else
                             <p class="text-gray-500">No domain assigned</p>
                         @endif
@@ -608,7 +1193,7 @@ new class extends Component implements HasForms {
                 <!-- Website Settings Box -->
                 <div id="website-settings" class="hidden tab-panel">
                     <form wire:submit="edit" class="space-y-6">
-                        <h2 class="text-lg font-semibold mb-4">Website Settings</h2>
+                        <h2 class="text-lg font-semibold grid gap-y-2">Website Settings</h2>
 
                         <!-- Render the form fields here -->
                         {{ $this->form }}
@@ -888,60 +1473,69 @@ new class extends Component implements HasForms {
                 <!-- Live Settings Box -->
                 <div id="live-settings" class="hidden space-y-6 tab-panel">
                     <h1 class="text-2xl font-bold mb-4">Make Your Website Live</h1>
+                
                     <!-- Subdomain Input -->
-                    <div class="mb-4">
+                    <div x-data="subdomainChecker()" class="grid gap-y-2">
                         <label for="subdomain" class="block">
-                            <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">Subdomain
-                            </span>
+                            <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">Subdomain</span>
                             </label>
-                        <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden space-x-2">
-                            <input type="text" id="subdomain" name="subdomain"
-                                wire:model="liveData.domain"
+                            <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden">
+                                <input type="text" id="subdomain" name="subdomain" wire:model="liveData.domain" x-model="subdomain"  @input.debounce.500ms="checkSubdomain"
                                 class="form-control fi-input block w-full border-none py-1.5 text-base text-gray-950 transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 bg-white/0 ps-3 pe-3"
-                                placeholder="Your Subdomain"
-                                value="{{ old('subdomain') }}" required>
+                                placeholder="Your Subdomain" value="{{ old('subdomain') }}" required>
                         </div>
-                        @error('subdomain')
-                            <div class="text-red-600 text-sm">{{ $message }}</div>
-                        @enderror
+                        <p x-text="message" class="text-sm font-medium mt-2"></p>
                     </div>
-                    
+                
                     <!-- Pages Selection -->
-                    <div class="mb-4">
+                    <div class="grid gap-y-2">
                         <label class="block text-sm font-semibold">Select Pages</label>
                         @foreach($pages as $page)
                             <div class="flex items-center mb-2">
-                                <input type="checkbox" name="pages[]" value="{{ $page->id }}" class="mr-2" @checked(in_array($page->id, old('pages', [])))>
+                                <input type="checkbox" wire:model="liveData.pages" value="{{ $page->id }}" class="mr-2">
                                 <label for="pages[]" class="text-sm">{{ $page->name }}</label>
                             </div>
                         @endforeach
-                        @error('pages')
+                        @error('liveData.pages')
                             <div class="text-red-600 text-sm">{{ $message }}</div>
                         @enderror
                     </div>
-                    
+                
                     <!-- Header Option -->
-                    <div class="mb-4">
+                    <div class="grid gap-y-2">
                         <label class="block text-sm font-semibold">Include Header</label>
-                        <input type="checkbox" name="header" class="mr-2" @checked(old('header', false))>
-                        @error('header')
+                        <input type="checkbox" wire:model="liveData.header" class="mr-2">
+                        @error('liveData.header')
                             <div class="text-red-600 text-sm">{{ $message }}</div>
                         @enderror
                     </div>
-                    
+                
                     <!-- Footer Option -->
-                    <div class="mb-4">
+                    <div class="grid gap-y-2">
                         <label class="block text-sm font-semibold">Include Footer</label>
-                        <input type="checkbox" name="footer" class="mr-2" @checked(old('footer', false))>
-                        @error('footer')
+                        <input type="checkbox" wire:model="liveData.footer" class="mr-2">
+                        @error('liveData.footer')
                             <div class="text-red-600 text-sm">{{ $message }}</div>
                         @enderror
                     </div>
+                
+                    <div class="flex justify-end gap-x-3 mt-3">
                     
-                    <!-- Make it Live Button -->
-                    <x-button wire:click="liveWebsite" color="primary" class="text-white px-4 py-2 rounded-md w-full">Make Website Live</x-button>
-
+                    @if ($this->project->live)
+                        <!-- Update Button -->
+                        <x-button wire:click="updateLiveWebsite" type="submit" color="primary">
+                            Update Site
+                        </x-button>
+                            <x-button color="danger" type="button" wire:click="deleteLiveWebsite">Take Down</x-button>
+                    @else
+                        <!-- Make it Live Button -->
+                        <x-button wire:click="liveWebsite" type="submit" color="primary">
+                            Go Live
+                        </x-button>
+                    @endif
+                    </div>
                 </div>
+
 
 
             </div>
@@ -979,8 +1573,35 @@ new class extends Component implements HasForms {
                 tabs[0].click();
             })
 
-        </script>
-        @endscript
+    function subdomainChecker() {
+        return {
+            subdomain: '', // User input
+            message: '',   // Feedback message
+            async checkSubdomain() {
+                if (this.subdomain.trim() === '') {
+                    this.message = 'Please enter a subdomain.';
+                    return;
+                }
+
+                try {
+                    // Make an API call to check the subdomain
+                    let response = await fetch(`/api/check-subdomain?subdomain=${this.subdomain}`);
+                    let data = await response.json();
+
+                    if (data.available) {
+                        this.message = 'Subdomain is available.';
+                    } else {
+                        this.message = 'Subdomain is already taken.';
+                    }
+                } catch (error) {
+                    console.error(error);
+                    this.message = 'Error checking subdomain. Please try again.';
+                }
+            }
+        };
+    }
+</script>
+@endscript
 
 
 

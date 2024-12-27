@@ -13,6 +13,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Wave\Facades\Wave;
+use App\Models\Subdomain;
+
 
 // Wave routes
 Wave::routes();
@@ -90,3 +92,11 @@ Route::get('/footer/{project_id}/load', [BuilderController::class, 'loadFooter']
 Route::post('/header/data', [BuilderController::class, 'headerData']);
 
 Route::post('/footer/data', [BuilderController::class, 'footerData']);
+
+
+Route::get('/check-subdomain', function () {
+    $subdomain = request('subdomain');
+    $isAvailable = !Subdomain::where('subdomain', $subdomain)->exists();
+
+    return response()->json(['available' => $isAvailable]);
+});

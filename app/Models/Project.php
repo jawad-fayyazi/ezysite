@@ -25,6 +25,8 @@ class Project extends Model
         'robots_txt',
         'header_embed',
         'footer_embed',
+        'ss',
+        'favicon',
     ];
 
     // Cast the project_json column to an array

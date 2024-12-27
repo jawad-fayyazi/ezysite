@@ -9,6 +9,8 @@ use Filament\Notifications\Notification;
 use Livewire\Volt\Component;
 use function Laravel\Folio\{middleware, name};
 use App\Models\Project;
+use App\Models\WebPage;
+
 
 middleware('auth');
 name('websites.create');
@@ -41,15 +43,46 @@ new class extends Component implements HasForms {
     public function create(): void
     {
 
-        $projectJson = [];
 
-        auth()->user()->projects()->create([
+        $pageId = uniqid();
+
+        $projectJson = json_encode([
+            "assets" => [],
+            "styles" => [],
+            "pages" => [
+                [
+                    "name" => "Page 1",
+                    'id' => $pageId,
+                ]
+            ],
+            "symbols" => [],
+            "dataSources" => []
+        ]);
+
+        $project = auth()->user()->projects()->create([
             'project_name' => $this->data['name'],
             'description' => $this->data['description'],
             'project_json' => $projectJson,  // Default value for project_json
         ]);
 
         $this->form->fill();
+
+
+
+        $name = 'Page 1';
+        $projectId = $project->project_id;
+        $slug = Str::slug($name);
+
+        $page = WebPage::create([
+            'name' => $name,
+            'page_id' => $pageId,
+            'website_id' => $projectId,
+            'main' => 1,  // Default is 0, as it won't be the main page initially
+            'title' => $name . " - " . $project->project_name,
+            'html' => '<body></body>',
+            'css' => '* { box-sizing: border-box; } body {margin: 0;}',
+            'slug' => $slug,
+        ]);
 
         Notification::make()
             ->success()

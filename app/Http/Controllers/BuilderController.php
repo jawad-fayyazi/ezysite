@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Response;
 use ZipArchive;
 
 
@@ -598,5 +600,49 @@ class BuilderController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Footer content saved successfully!']);
     }
+
+
+    public function previewFiles($project_id, $filename = 'index.html')
+    {
+        // Define the base path to the preview folder for the given project
+        $basePath = resource_path('views/preview/' . $project_id);
+
+        // Check if the requested file exists, if not, return index.html by default
+        $filePath = $basePath . '/' . $filename;
+
+        // Check if the file exists
+        if (File::exists($filePath)) {
+            // Return the contents of the requested file
+            return response(File::get($filePath))
+                ->header('Content-Type', $this->getContentType($filename));
+        } else {
+            // If the file doesn't exist, return a 404 error
+            abort(404, 'File not found');
+        }
+    }
+
+    // Helper function to determine the content type based on file extension
+    private function getContentType($filename)
+    {
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        switch ($extension) {
+            case 'html':
+                return 'text/html';
+            case 'css':
+                return 'text/css';
+            case 'js':
+                return 'application/javascript';
+            case 'jpg':
+            case 'jpeg':
+                return 'image/jpeg';
+            case 'png':
+                return 'image/png';
+            case 'gif':
+                return 'image/gif';
+            default:
+                return 'application/octet-stream';
+        }
+    }
+
 
 }

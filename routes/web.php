@@ -94,9 +94,9 @@ Route::post('/header/data', [BuilderController::class, 'headerData']);
 Route::post('/footer/data', [BuilderController::class, 'footerData']);
 
 
-Route::get('/check-subdomain', function () {
-    $subdomain = request('subdomain');
-    $isAvailable = !Subdomain::where('subdomain', $subdomain)->exists();
+Route::get('/preview/{project_id}/{filename?}', [BuilderController::class, 'previewFiles']);
 
-    return response()->json(['available' => $isAvailable]);
-});
+
+
+
+

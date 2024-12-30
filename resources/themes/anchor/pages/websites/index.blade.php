@@ -56,9 +56,16 @@ new class extends Component {
                                 style="transform: scale(1); transition: transform 0.3s, box-shadow 0.3s;"
                                 onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0px 4px 20px rgba(0, 0, 0, 0.2)';"
                                 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0px 4px 10px rgba(0, 0, 0, 0.1)';">
-                                <div class="text-center">
-                                    <!-- Project Name -->
+                                <div class="flex items-center justify-center space-x-2 group"
+                                    title="{{ $project->live ? 'Website is live' : 'Website is not live' }}">
+                                            @if($project->favicon)
+                                                <img src="{{ asset('storage/usersites/' . $project->project_id . '/logo/' . $project->favicon) }}"
+                                                    alt="Website Favicon" class="w-6 h-6 rounded-full">
+                                            @endif
                                     <h3 class="text-lg font-bold text-gray-700">{{ $project->project_name }}</h3>
+                                    <span class="w-3 h-3 rounded-full 
+                                            {{ $project->live ? 'bg-green-500' : 'bg-red-500' }}" style="display: inline-block;">
+                                    </span>
                                 </div>
                                 <div class="mt-4">
                                     <!-- Placeholder Image -->

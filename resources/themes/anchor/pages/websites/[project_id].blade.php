@@ -38,11 +38,13 @@ new class extends Component implements HasForms {
     public $ourDomain = ".test.wpengineers.com";
     public $imageCache = [];
     public $message = '';
-
+    public $isPreview = false;
 
     // Mount method to set the project_id from the URL and fetch the project
     public function mount($project_id): void
     {
+
+
         $this->project_id = $project_id; // Set the project_id dynamically from the URL
 
         // Retrieve the project using the project_id and authenticate it
@@ -63,11 +65,16 @@ new class extends Component implements HasForms {
         if (!$this->footer) {
             $this->footerCreate();
         }
+
+
         $this->liveData = [
             'domain' => $this->project->domain,
             'pages' => [],    // Default empty array for selected pages
             'header' => true, // Default value for header
             'footer' => true, // Default value for footer
+            'global_header_embed' => $this->project->header_embed,
+            'global_footer_embed' => $this->project->footer_embed,
+            'robots_txt' => $this->project->robots_txt,
         ];
 
         // Retrieve pages for the project
@@ -281,9 +288,9 @@ new class extends Component implements HasForms {
                     // Use storeAs to save the file on the public disk
                     Storage::disk('public')->move($file, $newPath);
                     Storage::disk('public')->delete($file);
-                     $this->project->update([
+                    $this->project->update([
                         'favicon' => "{$this->project->project_id}." . pathinfo($file, PATHINFO_EXTENSION),
-                     ]);
+                    ]);
                 } catch (\Exception $e) {
                     Notification::make()
                         ->danger()
@@ -361,11 +368,11 @@ new class extends Component implements HasForms {
             $title = "";
 
             // Check if page_slug is available in the data and convert it to a slug
-            $slug = $this->convertToSlug($data["page_slug"] ?? $data["page_name"]);
+            $slug = Str::slug($data["page_slug"] ?? $data["page_name"]);
 
             // Ensure the slug is not empty after conversion
             if (empty($slug)) {
-                $slug = $this->convertToSlug($data["page_name"]);
+                $slug = Str::slug($data["page_name"]);
             }
 
             // Ensure the slug is unique within the project
@@ -532,52 +539,17 @@ new class extends Component implements HasForms {
 
 
 
-    public function liveWebsite()
+    public function previewWebsite()
     {
         // Access liveData array
-        $domain = $this->liveData['domain'];
-        $pages = $this->liveData['pages']; // Selected pages array
-        $header = $this->liveData['header'];
-        $footer = $this->liveData['footer'];
+        $domain = $this->project->project_id;
+        $pages = $this->pages->pluck('id')->toArray(); // Selected pages array
+        $header = true;
+        $footer = false;
 
-        // Check if domain is empty
-        if (empty($domain)) {
-            // Generate a default domain using the project's name or a unique identifier
-            $defaultDomain = Str::slug($this->project->project_name) . '-' . uniqid();
-            $domain = $defaultDomain;
-        } else {
-            // Append subdomain suffix if not already present
-            $domain = Str::slug($domain);
-        }
-
-        // Update project domain
-        $this->project->update([
-            'domain' => $domain,
-        ]);
-
-
-        // Check if at least one page is selected
-        if (empty($pages)) {
-            if($this->shouldRedirect){
-                Notification::make()
-                    ->danger()
-                    ->title('Error: No Pages Selected')
-                    ->body('You must select at least one page to make the website live.')
-                    ->send();
-
-                return redirect('/websites' . '/' . $this->project->project_id);
-            }
-            else{
-                return [
-                    'status' => 'danger',
-                    'title' => 'No Pages Selected',
-                    "body" => 'You must select at least one page to make the website live.',
-                ];
-            }
-        }
 
         // Ensure the target folder exists
-        $targetFolder = "/var/www/domain/{$domain}";
+        $targetFolder = "/var/www/ezysite/resources/views/preview/{$domain}";
         if (!file_exists($targetFolder)) {
             if (!mkdir($targetFolder, 0755, true)) {
 
@@ -597,7 +569,7 @@ new class extends Component implements HasForms {
                         "body" => "Failed to create directory for the domain: {$domain}",
                     ];
                 }
-                
+
             }
         }
 
@@ -627,11 +599,259 @@ new class extends Component implements HasForms {
         }
         $favIcon = '';
         $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/logo/{$this->project->favicon}";
-        if(File::exists($sourcePath)){
-            
+        if (File::exists($sourcePath)) {
+
             $destinationPath = $targetFolder . "/img/{$this->project->favicon}";
             $result = $this->copyImage($sourcePath, $destinationPath);
-            if ($result === 'danger'){
+            if ($result === 'danger') {
+                Notification::make()
+                    ->danger()
+                    ->title('Favicon not found')
+                    ->send();
+            }
+            $favIcon = "/img/{$this->project->favicon}";
+        }
+
+
+        // Fetch and process each selected page
+        foreach ($pages as $pageId) {
+            $page = WebPage::find($pageId);
+
+            if (!$page) {
+                if ($this->shouldRedirect) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Page not found')
+                        ->body("Failed to fetch page with ID: {$pageId}")
+                        ->send();
+
+                    return redirect('/websites' . '/' . $this->project->project_id);
+                } else {
+                    return [
+                        'status' => 'danger',
+                        'title' => 'Page not found',
+                        "body" => "Failed to fetch page with ID: {$pageId}",
+                    ];
+                }
+            }
+
+            $pageHtml = $page->html;
+            $pageCss = $page->css;
+            $title = $page->title;
+            $slug = $page->slug;
+            $metaDescription = $page->meta_description ?? '';
+            $ogTags = $page->og_tags ?? '';
+            $headerEmbed = $page->header_embed_code ?? '';
+            $footerEmbed = $page->footer_embed_code ?? '';
+
+
+
+
+
+
+
+            // Build full HTML
+            $html = $this->buildFullHtml([
+                'title' => $title,
+                'meta_description' => $metaDescription,
+                'og_tags' => $ogTags,
+                'fav_icon' => $favIcon,
+                'header_embed' => $headerEmbed,
+                'footer_embed' => $footerEmbed,
+                'header_html' => $headerHtml,
+                'header_css' => $headerCss,
+                'footer_html' => $footerHtml,
+                'footer_css' => $footerCss,
+                'page_html' => $pageHtml,
+                'page_css' => $pageCss,
+            ]);
+
+            // Determine filename
+            $filename = $page->main ? 'index.html' : "{$slug}.html";
+
+            // Save the HTML file
+            if (!file_put_contents("{$targetFolder}/{$filename}", $html)) {
+                if ($this->shouldRedirect) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Page file Error')
+                        ->body("Failed to write HTML file for page: {$slug}")
+                        ->send();
+
+                    return redirect('/websites' . '/' . $this->project->project_id);
+                } else {
+                    return [
+                        'status' => 'danger',
+                        'title' => 'Page file Error',
+                        "body" => "Failed to write HTML file for page: {$slug}",
+                    ];
+                }
+            }
+        }
+
+
+
+        if ($this->shouldRedirect) {
+            Notification::make()
+                ->success()
+                ->title('Website successfully made live at ' . $domain . $this->ourDomain)
+                ->send();
+            // Redirect or refresh logic
+            return redirect('/websites' . '/' . $this->project->project_id);
+        } else {
+            return [
+                'status' => 'success',
+            ];
+        }
+    }
+
+
+
+    public function liveWebsite()
+    {
+
+
+        $preview = $this->isPreview;
+        // Access liveData array
+        $domain = $this->liveData['domain'];
+        $pages = $this->liveData['pages']; // Selected pages array
+        $header = $this->liveData['header'];
+        $footer = $this->liveData['footer'];
+
+        $robotsTxt = $this->liveData['robots_txt'] ?? '# Default robots.txt';
+        $globalHeaderEmbed = $this->liveData['global_header_embed'] ?? '';
+        $globalFooterEmbed = $this->liveData['global_footer_embed'] ?? '';
+
+
+        if(!$this->check()){
+            if ($this->shouldRedirect) {
+                Notification::make()
+                    ->danger()
+                    ->title('Domain Error')
+                    ->body('You must select correct domain for your website to live.')
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'danger',
+                    'title' => 'Domain Error',
+                    "body" => 'You must select correct domain for your website to live.',
+                ];
+            }
+        }
+
+        // Check if domain is empty
+        if (empty($domain)) {
+            // Generate a default domain using the project's name or a unique identifier
+            $defaultDomain = Str::slug($this->project->project_name) . '-' . uniqid();
+            $domain = $defaultDomain;
+        } else {
+            // Append subdomain suffix if not already present
+            $domain = Str::slug($domain);
+        }
+
+        // Update project domain
+        $this->project->update([
+            'domain' => $domain,
+        ]);
+
+
+        // Check if at least one page is selected
+        if (empty($pages)) {
+            if ($this->shouldRedirect) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error: No Pages Selected')
+                    ->body('You must select at least one page to make the website live.')
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'danger',
+                    'title' => 'No Pages Selected',
+                    "body" => 'You must select at least one page to make the website live.',
+                ];
+            }
+        }
+
+        // Ensure the target folder exists
+        $targetFolder = "/var/www/domain/{$domain}";
+        if (!file_exists($targetFolder)) {
+            if (!mkdir($targetFolder, 0755, true)) {
+
+
+                if ($this->shouldRedirect) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Domain Configuration Error')
+                        ->body("Failed to create directory for the domain: {$domain}")
+                        ->send();
+
+                    return redirect('/websites' . '/' . $this->project->project_id);
+                } else {
+                    return [
+                        'status' => 'danger',
+                        'title' => 'Domain Configuration Error',
+                        "body" => "Failed to create directory for the domain: {$domain}",
+                    ];
+                }
+
+            }
+        }
+
+        $robotsFilePath = "{$targetFolder}/robots.txt";
+        if (!file_put_contents($robotsFilePath, $robotsTxt)) {
+            if ($this->shouldRedirect) {
+                Notification::make()
+                    ->danger()
+                    ->title('Robots.txt Error')
+                    ->body("Failed to create robots.txt for the domain: {$domain}")
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'danger',
+                    'title' => 'Robots.txt Error',
+                    "body" => "Failed to create robots.txt for the domain: {$domain}",
+                ];
+            }
+        }
+
+
+
+
+        // Fetch header and footer if required
+        $headerHtml = '';
+        $headerCss = '';
+        $footerHtml = '';
+        $footerCss = '';
+
+        // Fetch header and footer data
+        if ($header) {
+            $header = HeaderFooter::where("website_id", $this->project->project_id)
+                ->where("is_header", true)
+                ->first();
+            $headerHtml = $header->html;
+            $headerCss = $header->css;
+        }
+
+        if ($footer) {
+            $footer = HeaderFooter::where("website_id", $this->project->project_id)
+                ->where("is_header", false)
+                ->first();
+            $footerHtml = $footer->html;
+            $footerCss = $footer->css;
+        }
+        $favIcon = '';
+        $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/logo/{$this->project->favicon}";
+        if (File::exists($sourcePath)) {
+
+            $destinationPath = $targetFolder . "/img/{$this->project->favicon}";
+            $result = $this->copyImage($sourcePath, $destinationPath);
+            if ($result === 'danger') {
                 Notification::make()
                     ->danger()
                     ->title('Favicon not found')
@@ -745,7 +965,7 @@ new class extends Component implements HasForms {
 
                     // If the image was successfully saved, replace the src in the <img> tag
                     return str_replace($imageSrc, $newSrc, $matches[0]);
-                    
+
                 }
 
                 // If it's not a base64 image, return the original HTML
@@ -761,8 +981,8 @@ new class extends Component implements HasForms {
                 'meta_description' => $metaDescription,
                 'og_tags' => $ogTags,
                 'fav_icon' => $favIcon,
-                'header_embed' => $headerEmbed,
-                'footer_embed' => $footerEmbed,
+                'header_embed' => $globalHeaderEmbed . $headerEmbed, // Combine global and page-specific header embeds
+                'footer_embed' => $globalFooterEmbed . $footerEmbed, // Combine global and page-specific footer embeds
                 'header_html' => $headerHtml,
                 'header_css' => $headerCss,
                 'footer_html' => $footerHtml,
@@ -807,8 +1027,7 @@ new class extends Component implements HasForms {
                 ->send();
             // Redirect or refresh logic
             return redirect('/websites' . '/' . $this->project->project_id);
-        }
-        else{
+        } else {
             return [
                 'status' => 'success',
             ];
@@ -912,13 +1131,13 @@ HTML;
             // Create the destination folder if it doesn't exist
             $destinationFolder = dirname($destinationPath);
             if (!File::exists($destinationFolder)) {
-                if(!File::makeDirectory($destinationFolder, 0755, true)){
+                if (!File::makeDirectory($destinationFolder, 0755, true)) {
                     return 'danger';
                 }  // Creates the directory with the right permissions
             }
 
             // Copy the file to the new destination
-            if (File::copy($sourcePath, $destinationPath)){
+            if (File::copy($sourcePath, $destinationPath)) {
                 return "success";
             } else {
                 return 'danger';
@@ -927,7 +1146,7 @@ HTML;
 
         return "danger";
     }
-    
+
     public function deleteLiveWebsite()
     {
         // Retrieve the domain associated with the project
@@ -974,14 +1193,17 @@ HTML;
                     ->send();
                 // Redirect or refresh logic
                 return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'success',
+                ];
             }
-            else{
-            return [
-                'status' => 'success',
-            ];
-        }
 
         } else {
+
+            $this->project->live = false;
+            $this->project->save();  // Save the model to the database
+
             if ($this->shouldRedirect) {
                 // Handle case where the folder doesn't exist
                 Notification::make()
@@ -1047,10 +1269,32 @@ HTML;
 
 
 
-        if ($delete['status'] === 'success'){
+        if ($delete['status'] === 'success') {
 
             $live = $this->liveWebsite();
 
+        }
+        elseif($delete['status'] === 'danger'){
+
+            $title = $delete['title'];  // Set title for live
+            $body = $delete['body'];    // Set body for live
+            
+            // Send notification
+            Notification::make()
+                ->danger()
+                ->title($title)
+                ->body($body)
+                ->send();
+
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+        else{
+            Notification::make()
+                ->danger()
+                ->title('Something Went Wrong')
+                ->body("Please try again later.")
+                ->send();
+            return redirect('/websites' . '/' . $this->project->project_id);
         }
 
         if ($live['status'] === 'danger' || $delete['status'] === 'danger') {
@@ -1077,15 +1321,13 @@ HTML;
                 ->send();
 
             return redirect('/websites' . '/' . $this->project->project_id);
-        }
-         elseif($live['status'] === 'success' && $delete['status'] === 'success'){
+        } elseif ($live['status'] === 'success' && $delete['status'] === 'success') {
             Notification::make()
                 ->success()
                 ->title('Website updated successfully')
                 ->send();
             return redirect('/websites' . '/' . $this->project->project_id);
-        }
-        else {
+        } else {
             Notification::make()
                 ->danger()
                 ->title('Something Went Wrong')
@@ -1096,19 +1338,95 @@ HTML;
     }
 
 
-    public function domainCheck()
+
+
+
+
+
+   public function check()
 {
-    if (!$this->liveData['domain']) {
-        $this->message = 'Please enter a subdomain.';
-        return;
+    // Check if the subdomain is empty
+    if (empty($this->liveData['domain'])) {
+        $this->message = '<p class="text-sm text-gray-600 inline-flex items-center">
+                            <span class="mr-1"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle" viewBox="0 0 16 16">
+  <path d="M8 1a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 1a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm-.5 7a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-3zM8 5.5a.5.5 0 1 1 1 0 .5.5 0 0 1-1 0z"/>
+</svg></span> Please enter a subdomain.
+                          </p>';
+        return false;
     }
 
-    if (Subdomain::where('subdomain', $this->liveData['domain'])->exists()) {
-        $this->message = 'Subdomain is already taken.';
+
+
+    $domianCheck = Str::slug($this->liveData['domain']);
+
+
+    // Check if the subdomain is less than 3 characters long or more than 20 characters
+    if (strlen($domianCheck) < 3 || strlen($domianCheck) > 20) {
+        $this->message = '<p class="text-sm text-yellow-600 inline-flex items-center">
+                            <span class="mr-1"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-circle" viewBox="0 0 16 16">
+  <path d="M8 1a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 1a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm-.001 4.5a.5.5 0 0 1 .5-.5h.002a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-.002a.5.5 0 0 1-.5-.5v-4zM7.5 11a.5.5 0 0 1 .5-.5h.002a.5.5 0 0 1 .5.5v.002a.5.5 0 0 1-.5.5h-.002a.5.5 0 0 1-.5-.5v-.002z"/>
+</svg></span> Subdomain must be between 3 and 20 characters long.
+                          </p>';
+        return false;
+    }
+
+    // Query the database to check if the domain already exists
+    $domainExists = Project::where('domain', $domianCheck)
+                           ->where('project_id', '!=', $this->project->project_id) // Exclude current project
+                           ->exists();
+
+    // Check if the domain exists
+    if ($domainExists) {
+        $this->message = '<p class="text-sm text-red-600 inline-flex items-center">
+                            <span class="mr-1"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle" viewBox="0 0 16 16"><path d="M8 1a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 1a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm3.646 4.354a.5.5 0 0 1 0 .708L8.707 8l2.939 2.939a.5.5 0 0 1-.707.707L8 8.707 5.061 11.646a.5.5 0 0 1-.707-.707L7.293 8 4.354 5.061a.5.5 0 1 1 .707-.707L8 7.293l2.939-2.939a.5.5 0 0 1 .707.707L8.707 8l2.939 2.939a.5.5 0 0 1-.707.707L8 8.707 5.061 11.646a.5.5 0 0 1-.707-.707L7.293 8 4.354 5.061a.5.5 0 1 1 .707-.707L8 7.293l2.939-2.939a.5.5 0 0 1 .707.707L8.707 8l2.939 2.939a.5.5 0 0 1-.707.707L8 8.707z"/></svg></span> Domain is taken.
+                          </p>';
+        return false;
     } else {
-        $this->message = 'Subdomain is available.';
+        $this->message = '<p class="text-sm text-green-600 inline-flex items-center">
+                            <span class="mr-1"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="bi bi-check-circle" viewBox="0 0 16 16">
+  <circle cx="8" cy="8" r="7" stroke="green" fill="none"/>
+  <path d="M6 8l2 2 4-4" stroke="green" fill="none"/>
+</svg>
+</span> Domain is available.</p>';
+        return true;
     }
 }
+
+
+    public function previewGenerate() {
+        $this->isPreview = true;
+        $this->shouldRedirect = false;
+        $live = $this->previewWebsite();
+
+        if ($live['status'] === 'danger') {
+                $title = $live['title'];  // Set title for live
+                $body = $live['body'];    // Set body for live
+                // Send notification
+                Notification::make()
+                    ->danger()
+                    ->title($title)
+                    ->body($body)
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            }
+            elseif ($live['status'] === 'success') {
+                return redirect('/preview' . '/' . $this->project->project_id . '/index.html');
+        } else {
+            Notification::make()
+                ->danger()
+                ->title('Something Went Wrong')
+                ->body("Please try again later.")
+                ->send();
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+
+
+        $this->isPreview = false;
+        $this->shouldRedirect = true;
+
+
+    }
 
 }
 ?>
@@ -1116,82 +1434,151 @@ HTML;
 <x-layouts.app>
     @volt('websites.edit')
     <x-app.container>
+
+    <style>
+
+/* Style the scrollbar itself */
+::-webkit-scrollbar {
+    width: 8px; /* Width of the scrollbar */
+}
+
+/* Style the track (background) of the scrollbar */
+::-webkit-scrollbar-track {
+    background: #f1f1f1; /* Light grey background */
+    border-radius: 10px; /* Rounded corners for the track */
+}
+
+/* Style the thumb (draggable part) of the scrollbar */
+::-webkit-scrollbar-thumb {
+    background: #888; /* Dark grey color for the thumb */
+    border-radius: 10px; /* Rounded corners for the thumb */
+}
+
+/* Hover effect for the thumb */
+::-webkit-scrollbar-thumb:hover {
+    background: #555; /* Darker grey when hovering over the thumb */
+}
+
+/* Optional: Style for dark mode */
+.dark-mode::-webkit-scrollbar-track {
+    background: #333; /* Darker background for dark mode */
+}
+
+.dark-mode::-webkit-scrollbar-thumb {
+    background: #aaa; /* Lighter thumb for dark mode */
+}
+
+.dark-mode::-webkit-scrollbar-thumb:hover {
+    background: #888; /* Darker thumb hover in dark mode */
+}
+
+    </style>
         <div class="container mx-auto my-6">
             <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Websites" :href="route('websites')" />
             <!-- Box with background, padding, and shadow -->
             <div class="bg-white p-6 rounded-lg shadow-lg">
+            <div class="space-y-6">
                 <div class="flex items-center justify-between mb-5">
-                    <!-- Display the current project name as a heading -->
-                    <x-app.heading title="Website: {{ $this->project->project_name }}"
-                        description="Manage your website's details and settings." :border="false" />
+                        <!-- Favicon or Icon with the project name -->
+                    <div class="flex items-center">
+                        @if($this->project->favicon)
+                        <img src="{{ asset('storage/usersites/' . $this->project->project_id . '/logo/' . $this->project->favicon) }}" 
+                            alt="Website Favicon" class="w-6 h-6 rounded-full mr-2">
+                        @endif
+                        <x-app.heading title="{{ $this->project->project_name }}"
+                            description="{{ $this->project->description ?? 'No description available' }}" :border="false" class="mr-8" />
+                    </div>
+
                     <x-button tag="a" :href="route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name])" target="_blank">Open In Builder</x-button>
+                    
                 </div>
                 
-                <!-- Tabs Navigation -->
-                <div class="mb-6 border-b border-gray-200">
-                    <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
-                        <li class="mr-2">
-                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg" data-tab="overview">Overview</a>
-                        </li>
-                        <li class="mr-2">
-                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg" data-tab="pages">Pages</a>
-                        </li>
-                        <li class="mr-2">
-                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg"
-                                data-tab="header-footer">Header & Footer</a>
-                        </li>
-                        <li class="mr-2">
-                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg"
-                                data-tab="website-settings">Website Settings</a>
-                        </li>
-                        <li class="mr-2">
-                            <a href="#" class="tab-btn inline-block p-4 rounded-t-lg" data-tab="live-settings">Live
-                                Settings</a>
-                        </li>
-                    </ul>
+                <!-- Domain or URL -->
+                <div class="space-y-2">
+                    <h3 class="text-lg font-medium">Live Website</h3>
+                    @if($this->project->domain)
+                    <a href="{{ 'https://' . $this->project->domain . $this->ourDomain}}"
+                    class="text-blue-600 hover:underline"
+                    target="_blank">{{ 'https://' . $this->project->domain . $this->ourDomain}}</a>
+                    @else
+                    <p class="text-gray-500">No domain assigned</p>
+                    @endif
                 </div>
-                <!-- Overview Tab Content -->
-
-                <div id="overview" class="hidden space-y-6 tab-panel">
-                    <!-- Website Name -->
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-2xl font-semibold">{{ $this->project->project_name }}</h2>
-                        <div class="text-sm text-gray-500">Project Name</div>
-                    </div>
-
-                    <!-- Description -->
-                    <div class="space-y-2">
-                        <h3 class="text-lg font-medium">Description</h3>
-                        <p class="text-gray-700">{{ $this->project->description ?? 'No description available' }}</p>
-                    </div>
-
-                    <!-- Domain or URL -->
-                    <div class="space-y-2">
-                        <h3 class="text-lg font-medium">Live Website</h3>
-                        @if($this->project->domain)
-                            <a href="{{ 'https://' . $this->project->domain . $this->ourDomain}}"
-                                class="text-blue-600 hover:underline"
-                                target="_blank">{{ 'https://' . $this->project->domain . $this->ourDomain}}</a>
-                        @else
-                            <p class="text-gray-500">No domain assigned</p>
-                        @endif
-                    </div>
-
-                    <!-- Live Status Indicator -->
-                    <div class="flex items-center">
-                        <span class="text-sm font-medium mr-2">Status:</span>
-                        @if($this->project->live)
-                            <span class="text-green-500">Live</span>
-                        @else
-                            <span class="text-red-500">Not Live</span>
-                        @endif
-                    </div>
+             
+                
+                <!-- Live Status Indicator -->
+                <div class="flex items-center">
+                    <span class="text-sm font-medium mr-2">Status:</span>
+                    @if($this->project->live)
+                    <span class="text-green-500">Live</span>
+                    @else
+                    <span class="text-red-500">Not Live</span>
+                    @endif
                 </div>
+            </div>
+
+                            <div class="flex items-center justify-end">
+                            <x-button type="button" wire:click="previewGenerate" color="secondary">Preview Website</x-button>
+                            </div>
+            
+
+    <div x-data="{ activeTab: 'pages' }">
+        <!-- Tabs Navigation -->
+        <div class="mb-6 border-b border-gray-200">
+            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
+                <li class="mr-2">
+                    <a
+                        @click.prevent="activeTab = 'pages'" 
+                        :class="{ 'text-blue-600 border-blue-500': activeTab === 'pages' }" 
+                        class="tab-btn inline-block p-4 rounded-t-lg border-b-2 cursor-pointer select-none"
+                    >
+                        Pages
+                    </a>
+                </li>
+                <li class="mr-2">
+                    <a
+                        @click.prevent="activeTab = 'header-footer'" 
+                        :class="{ 'text-blue-600 border-blue-500': activeTab === 'header-footer' }" 
+                        class="tab-btn inline-block p-4 rounded-t-lg border-b-2 cursor-pointer select-none"
+                    >
+                        Header & Footer
+                    </a>
+                </li>
+                <li class="mr-2">
+                    <a
+                        @click.prevent="activeTab = 'website-settings'" 
+                        :class="{ 'text-blue-600 border-blue-500': activeTab === 'website-settings' }" 
+                        class="tab-btn inline-block p-4 rounded-t-lg border-b-2 cursor-pointer select-none"
+                    >
+                        Website Settings
+                    </a>
+                </li>
+                <li class="mr-2">
+                    <a
+                        @click.prevent="activeTab = 'live-settings'" 
+                        :class="{ 'text-blue-600 border-blue-500': activeTab === 'live-settings' }" 
+                        class="tab-btn inline-block p-4 rounded-t-lg border-b-2 cursor-pointer select-none"
+                    >
+                        Live Settings
+                    </a>
+                </li>
+            </ul>
+        </div>
 
 
 
-                <!-- Website Settings Box -->
-                <div id="website-settings" class="hidden tab-panel">
+              <!-- Website Settings Box -->
+                <div 
+    x-show="activeTab === 'website-settings'" 
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 transform scale-95"
+    x-transition:enter-end="opacity-100 transform scale-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100 transform scale-100"
+    x-transition:leave-end="opacity-0 transform scale-95"
+    x-cloak 
+    id="website-settings" 
+    class="space-y-6 tab-panel">
                     <form wire:submit="edit" class="space-y-6">
                         <h2 class="text-lg font-semibold grid gap-y-2">Website Settings</h2>
 
@@ -1234,9 +1621,18 @@ HTML;
                         </div>
                     </form>
                 </div>
-
                 <!-- Pages Box -->
-                <div id="pages" class="hidden tab-panel">
+                <div 
+    x-show="activeTab === 'pages'" 
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 transform scale-95"
+    x-transition:enter-end="opacity-100 transform scale-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100 transform scale-100"
+    x-transition:leave-end="opacity-0 transform scale-95"
+    x-cloak 
+    id="pages" 
+    class="space-y-6 tab-panel">
                     <div class="flex items-center justify-between mb-5">
                         <!-- Display the current project name as a heading -->
                         <h2 class="text-2xl font-semibold">Pages</h2>
@@ -1402,9 +1798,18 @@ HTML;
 
                     </div>
                 </div>
-
                 <!-- Header/Footer Box -->
-                <div id="header-footer" class="hidden space-y-6 tab-panel">
+                <div 
+    x-show="activeTab === 'header-footer'" 
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 transform scale-95"
+    x-transition:enter-end="opacity-100 transform scale-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100 transform scale-100"
+    x-transition:leave-end="opacity-0 transform scale-95"
+    x-cloak 
+    id="header-footer" 
+    class="space-y-6 tab-panel">
                 
                     <div class="flex items-center justify-between mb-5">
                         <!-- Display the current project name as a heading -->
@@ -1421,13 +1826,13 @@ HTML;
                             </svg>
                         </div>
                         <div x-show="open" x-transition.duration.300ms x-cloak class="bg-white-100 p-4 rounded-md shadow-md mt-3">
-                            <!-- Header Preview Content -->
+                            <!-- Header Preview Content
                             <div class="header-preview" style="border: 1px solid #ccc; pointer-events: none; user-select: none;">
                                 <style>
                                     {!! $this->header->css !!}
                                 </style>
                                 {!! $this->header->html !!}
-                            </div>
+                            </div> -->
                     
                             <!-- Buttons (only shown when section is open) -->
                             <div class="flex justify-end gap-x-3 mt-3">
@@ -1448,13 +1853,13 @@ HTML;
                             </svg>
                         </div>
                         <div x-show="open" x-transition.duration.300ms x-cloak class="bg-white-100 p-4 mt-3 rounded-md shadow-md">
-                            <!-- Footer Preview Content -->
+                            <!-- Footer Preview Content
                             <div class="footer-preview" style="border: 1px solid #ccc; pointer-events: none; user-select: none;">
                                 <style>
                                     {!! $this->footer->css !!}
                                 </style>
                                 {!! $this->footer->html !!}
-                            </div>
+                            </div> -->
                     
                             <!-- Buttons (only shown when section is open) -->
                             <div class="flex justify-end gap-x-3 mt-3">
@@ -1467,56 +1872,78 @@ HTML;
 
 
                 </div>
-
-
-
                 <!-- Live Settings Box -->
-                <div id="live-settings" class="hidden space-y-6 tab-panel">
+                <div 
+    x-show="activeTab === 'live-settings'" 
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 transform scale-95"
+    x-transition:enter-end="opacity-100 transform scale-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100 transform scale-100"
+    x-transition:leave-end="opacity-0 transform scale-95"
+    x-cloak 
+    id="live-settings" 
+    class="space-y-6 tab-panel">
                     <h1 class="text-2xl font-bold mb-4">Make Your Website Live</h1>
                 
                     <!-- Subdomain Input -->
-                    <div x-data="subdomainChecker()" class="grid gap-y-2">
+                    <div class="grid gap-y-2">
                         <label for="subdomain" class="block">
                             <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">Subdomain</span>
                             </label>
                             <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden">
-                                <input type="text" id="subdomain" name="subdomain" wire:model="liveData.domain" x-model="subdomain"  @input.debounce.500ms="checkSubdomain"
+                                <input type="text" id="subdomain" name="subdomain" wire:model="liveData.domain" wire:keyup.debounce.1000ms="check"
                                 class="form-control fi-input block w-full border-none py-1.5 text-base text-gray-950 transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 bg-white/0 ps-3 pe-3"
                                 placeholder="Your Subdomain" value="{{ old('subdomain') }}" required>
                         </div>
-                        <p x-text="message" class="text-sm font-medium mt-2"></p>
+                            <span>{!! $this->message !!}</span>
                     </div>
                 
-                    <!-- Pages Selection -->
-                    <div class="grid gap-y-2">
-                        <label class="block text-sm font-semibold">Select Pages</label>
-                        @foreach($pages as $page)
-                            <div class="flex items-center mb-2">
-                                <input type="checkbox" wire:model="liveData.pages" value="{{ $page->id }}" class="mr-2">
-                                <label for="pages[]" class="text-sm">{{ $page->name }}</label>
+                    <div x-data="{ open: false }" class="grid gap-y-2">
+                        <div class="flex justify-between items-center">
+                                <div @click="open = !open" class="cursor-pointer text-md font-semibold w-full flex justify-between">
+                                    <span>Advance Settings</span>
+                                    <!-- Arrow Icon for Collapsible -->
+                                    <svg x-bind:class="open ? 'transform rotate-180' : ''" class="w-5 h-5 transition-transform duration-300" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
                             </div>
-                        @endforeach
-                        @error('liveData.pages')
-                            <div class="text-red-600 text-sm">{{ $message }}</div>
-                        @enderror
-                    </div>
-                
-                    <!-- Header Option -->
-                    <div class="grid gap-y-2">
-                        <label class="block text-sm font-semibold">Include Header</label>
-                        <input type="checkbox" wire:model="liveData.header" class="mr-2">
-                        @error('liveData.header')
-                            <div class="text-red-600 text-sm">{{ $message }}</div>
-                        @enderror
-                    </div>
-                
-                    <!-- Footer Option -->
-                    <div class="grid gap-y-2">
-                        <label class="block text-sm font-semibold">Include Footer</label>
-                        <input type="checkbox" wire:model="liveData.footer" class="mr-2">
-                        @error('liveData.footer')
-                            <div class="text-red-600 text-sm">{{ $message }}</div>
-                        @enderror
+
+                        <div x-show="open" x-transition.duration.300ms x-cloak class="mt-4 space-y-3 bg-white-100 p-4 rounded-lg rounded-md shadow-md">
+                        <!-- Pages Selection -->
+                        <div class="grid gap-y-2">
+                            <label class="block text-sm font-semibold">Select Pages</label>
+                            @foreach($pages as $page)
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox" wire:model="liveData.pages" value="{{ $page->id }}" class="mr-2">
+                                    <label for="pages[]" class="text-sm">{{ $page->name }}</label>
+                                </div>
+                            @endforeach
+                            @error('liveData.pages')
+                                <div class="text-red-600 text-sm">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    
+                        <!-- Header Option -->
+                        <div class="grid gap-y-2">
+                            <label class="block text-sm font-semibold">Include Header</label>
+                            <input type="checkbox" wire:model="liveData.header" class="mr-2">
+                            @error('liveData.header')
+                                <div class="text-red-600 text-sm">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    
+                        <!-- Footer Option -->
+                        <div class="grid gap-y-2">
+                            <label class="block text-sm font-semibold">Include Footer</label>
+                            <input type="checkbox" wire:model="liveData.footer" class="mr-2">
+                            @error('liveData.footer')
+                                <div class="text-red-600 text-sm">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        </div>
                     </div>
                 
                     <div class="flex justify-end gap-x-3 mt-3">
@@ -1526,7 +1953,7 @@ HTML;
                         <x-button wire:click="updateLiveWebsite" type="submit" color="primary">
                             Update Site
                         </x-button>
-                            <x-button color="danger" type="button" wire:click="deleteLiveWebsite">Take Down</x-button>
+                            <x-button color="danger" type="button" wire:click="deleteLiveWebsite"  wire:confirm="Are you sure you want to take down this website?">Take Down</x-button>
                     @else
                         <!-- Make it Live Button -->
                         <x-button wire:click="liveWebsite" type="submit" color="primary">
@@ -1535,73 +1962,14 @@ HTML;
                     @endif
                     </div>
                 </div>
+    </div>
 
 
 
             </div>
         </div>
 
-        @script
-        <script>
-            const tabs = document.querySelectorAll(".tab-btn");
-            const panels = document.querySelectorAll(".tab-panel");
 
-            tabs.forEach(tab => {
-                tab.addEventListener("click", () => {
-                    // Hide all panels
-                    panels.forEach(panel => {
-                        panel.classList.add("hidden");
-                        console.log("hiding this", panel.id);
-                    });
-                    console.log("hide complete");
-
-                    // Remove the custom border classes from all tabs
-                    tabs.forEach(tab => {
-                        tab.classList.remove("border-b-2", "border-blue-500");
-                    });
-
-
-                    const target = document.getElementById(tab.dataset.tab);
-                    target.classList.remove("hidden");
-                    console.log("showing complete");
-
-                    // Add active class to the clicked tab
-                    tab.classList.add("border-b-2", "border-blue-500");
-                });
-
-                // Optional: Show the first tab by default
-                tabs[0].click();
-            })
-
-    function subdomainChecker() {
-        return {
-            subdomain: '', // User input
-            message: '',   // Feedback message
-            async checkSubdomain() {
-                if (this.subdomain.trim() === '') {
-                    this.message = 'Please enter a subdomain.';
-                    return;
-                }
-
-                try {
-                    // Make an API call to check the subdomain
-                    let response = await fetch(`/api/check-subdomain?subdomain=${this.subdomain}`);
-                    let data = await response.json();
-
-                    if (data.available) {
-                        this.message = 'Subdomain is available.';
-                    } else {
-                        this.message = 'Subdomain is already taken.';
-                    }
-                } catch (error) {
-                    console.error(error);
-                    this.message = 'Error checking subdomain. Please try again.';
-                }
-            }
-        };
-    }
-</script>
-@endscript
 
 
 

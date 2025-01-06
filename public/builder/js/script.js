@@ -300,28 +300,32 @@ function renderPages() {
             };
 
             // Send the updated page name to the backend
-      fetch(`/pages/rename/${pageId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": document
-            .querySelector('meta[name="csrf-token"]')
-            .getAttribute("content"), // CSRF token
-        },
-        body: JSON.stringify(updatedPageData),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            console.log("Page renamed successfully:", data.page);
-            saveContent();
-            renderPages(); // Re-render the list of pages with updated names
+            fetch(`/pages/rename/${pageId}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": document
+                  .querySelector('meta[name="csrf-token"]')
+                  .getAttribute("content"), // CSRF token
+              },
+              body: JSON.stringify(updatedPageData),
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.success) {
+                  console.log("Page renamed successfully:", data.page);
+                  saveContent();
+                  renderPages(); // Re-render the list of pages with updated names
+                } else {
+                  console.error("Error renaming page:", data.error);
+                }
+              })
+              .catch((error) => console.error("Error:", error));
           } else {
-            console.error("Error renaming page:", data.error);
+            alert("Page name cannot be empty."); // Show an alert if the name is empty
+            renderPages();
+            return;
           }
-        })
-        .catch((error) => console.error("Error:", error));
-        }
         });
 
         // Add event listener to save on Enter key
@@ -340,6 +344,13 @@ function renderPages() {
         const pageId = e.target.dataset.id; // Get the page ID from the data attribute
         const page = pagesApi.getAll().find((p) => p.id === pageId); // Find the page by ID
         const pageName = page ? page.getName() : "Unknown Page"; // Get the page name, fallback if not found
+
+        // Check if it's the only page left
+        if (pagesApi.getAll().length === 1) {
+          alert("You cannot delete this page. It is the only page left.");
+          renderPages();
+          return; // Prevent deletion if it's the last page
+        }
 
         // Ask for confirmation
         if (

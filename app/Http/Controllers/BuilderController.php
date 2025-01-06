@@ -604,6 +604,17 @@ class BuilderController extends Controller
 
     public function previewFiles($project_id, $filename = 'index.html')
     {
+
+
+        // Check if the authenticated user has access to this project
+        $project = Project::find($project_id);
+
+        if (!$project || $project->user_id != auth()->id()) {
+            // If the project doesn't exist or the user is not the owner, abort with a 403 Forbidden error
+            abort(404);
+        }
+
+
         // Define the base path to the preview folder for the given project
         $basePath = resource_path('views/preview/' . $project_id);
 

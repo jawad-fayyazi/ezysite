@@ -545,7 +545,9 @@ new class extends Component implements HasForms {
         $domain = $this->project->project_id;
         $pages = $this->pages->pluck('id')->toArray(); // Selected pages array
         $header = true;
-        $footer = false;
+        $footer = true;
+        $globalHeaderEmbed = $this->liveData['global_header_embed'] ?? '';
+        $globalFooterEmbed = $this->liveData['global_footer_embed'] ?? '';
 
 
         // Ensure the target folder exists
@@ -598,20 +600,6 @@ new class extends Component implements HasForms {
             $footerCss = $footer->css;
         }
         $favIcon = '';
-        $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/logo/{$this->project->favicon}";
-        if (File::exists($sourcePath)) {
-
-            $destinationPath = $targetFolder . "/img/{$this->project->favicon}";
-            $result = $this->copyImage($sourcePath, $destinationPath);
-            if ($result === 'danger') {
-                Notification::make()
-                    ->danger()
-                    ->title('Favicon not found')
-                    ->send();
-            }
-            $favIcon = "/img/{$this->project->favicon}";
-        }
-
 
         // Fetch and process each selected page
         foreach ($pages as $pageId) {
@@ -643,6 +631,7 @@ new class extends Component implements HasForms {
             $ogTags = $page->og_tags ?? '';
             $headerEmbed = $page->header_embed_code ?? '';
             $footerEmbed = $page->footer_embed_code ?? '';
+            $pageSlug = $page->main ? 'index' : $slug;
 
 
 
@@ -656,14 +645,15 @@ new class extends Component implements HasForms {
                 'meta_description' => $metaDescription,
                 'og_tags' => $ogTags,
                 'fav_icon' => $favIcon,
-                'header_embed' => $headerEmbed,
-                'footer_embed' => $footerEmbed,
+                'header_embed' => $globalHeaderEmbed . $headerEmbed, // Combine global and page-specific header embeds
+                'footer_embed' => $globalFooterEmbed . $footerEmbed, // Combine global and page-specific footer embeds
                 'header_html' => $headerHtml,
                 'header_css' => $headerCss,
                 'footer_html' => $footerHtml,
                 'footer_css' => $footerCss,
                 'page_html' => $pageHtml,
                 'page_css' => $pageCss,
+                'page_slug' => $pageSlug,
             ]);
 
             // Determine filename
@@ -706,11 +696,31 @@ new class extends Component implements HasForms {
     }
 
 
-
-    public function liveWebsite()
+        public function deletePreview()
     {
+        // Retrieve the domain associated with the project
+        $domain = $this->project->prokect_id;
 
 
+        // Define the target folder path
+        $targetFolder = "/var/www/ezysite/resources/views/preview/{$domain}";
+
+        // Check if the folder exists
+        if (file_exists($targetFolder)) {
+            // Recursive function to delete files and directories
+            $this->deleteDirectory($targetFolder);
+
+
+
+                return [
+                    'status' => 'success',
+                ];
+
+        }
+    }
+
+
+    public function liveWebsite() {
         $preview = $this->isPreview;
         // Access liveData array
         $domain = $this->liveData['domain'];
@@ -914,6 +924,51 @@ new class extends Component implements HasForms {
 
 
 
+            // Initialize the sitemap XML structure
+        $sitemap = '<?xml version="1.0" encoding="UTF-8"?>';
+        $sitemap .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+
+
+        // Loop through each page and add it to the sitemap
+        foreach ($pages as $pageId) {
+            $page = WebPage::find($pageId);
+
+            if ($page) {
+                $url = $page->main ? 'index.html' : "{$page->slug}.html";
+                $priority = $page->main ? '1.0' : '0.8';  // Main page gets priority 1.0, others 0.8
+                $sitemap .= '<url>';
+                $sitemap .= '<loc>https://' . $domain . $this->ourDomain . '/' . $url . '</loc>';
+                $sitemap .= '<lastmod>' . now()->toAtomString() . '</lastmod>';  // Date and time of the last modification
+                $sitemap .= '<priority>' . $priority . '</priority>'; // Set the priority based on the page
+                $sitemap .= '</url>';
+            }
+        }
+
+        $sitemap .= '</urlset>';
+
+        // Save the sitemap.xml file in the target domain folder
+        $sitemapFilePath = "{$targetFolder}/sitemap.xml";
+        if (!file_put_contents($sitemapFilePath, $sitemap)) {
+            if ($this->shouldRedirect) {
+                Notification::make()
+                    ->danger()
+                    ->title('Sitemap Error')
+                    ->body("Failed to create sitemap.xml for the domain: {$domain}")
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'danger',
+                    'title' => 'Sitemap Error',
+                    "body" => "Failed to create sitemap.xml for the domain: {$domain}",
+                ];
+            }
+        }
+
+
+
+
         // Fetch and process each selected page
         foreach ($pages as $pageId) {
             $page = WebPage::find($pageId);
@@ -944,6 +999,7 @@ new class extends Component implements HasForms {
             $ogTags = $page->og_tags ?? '';
             $headerEmbed = $page->header_embed_code ?? '';
             $footerEmbed = $page->footer_embed_code ?? '';
+            $pageSlug = $page->main ? 'index' : $slug;
 
 
 
@@ -989,6 +1045,7 @@ new class extends Component implements HasForms {
                 'footer_css' => $footerCss,
                 'page_html' => $updatedPageHtml,
                 'page_css' => $pageCss,
+                'page_slug' => $pageSlug,
             ]);
 
             // Determine filename
@@ -1033,6 +1090,53 @@ new class extends Component implements HasForms {
             ];
         }
     }
+
+
+
+
+    public function addActiveClassToMenu($headerCode, $pageSlug) {
+        // Remove the leading slash from the page slug (if any)
+        $pageSlug = ltrim($pageSlug, '/');
+
+        // Regular expression to match all <a> tags with href attributes
+        $pattern = '/<a\s+([^>]*)href\s*=\s*"([^"]+)"([^>]*)>(.*?)<\/a>/i';
+
+        // Callback function to check if the link matches the pageSlug
+        $callback = function ($matches) use ($pageSlug) {
+            // Extract href from the matched <a> tag
+            $link = $matches[2];
+
+            // Remove leading slash and file extension from the link
+            $linkWithoutExt = pathinfo(ltrim($link, '/'), PATHINFO_FILENAME);
+
+            // Remove file extension from the page slug
+            $pageSlugWithoutExt = pathinfo($pageSlug, PATHINFO_FILENAME);
+
+            // Extract the existing class (if any)
+            preg_match('/class\s*=\s*"([^"]*)"/i', $matches[1] . $matches[3], $classMatches);
+            $existingClass = isset($classMatches[1]) ? $classMatches[1] : '';
+
+            // Check if the link matches the page slug (ignoring extensions)
+            if ($linkWithoutExt === $pageSlugWithoutExt) {
+                // Add the 'active-menu-item' class
+                $newClass = $existingClass ? $existingClass . ' active-menu-item' : 'active-menu-item';
+                $classAttribute = 'class="' . $newClass . '"';
+                
+                // Add or replace the class attribute
+                $beforeAttributes = preg_replace('/class\s*=\s*"[^"]*"/i', '', $matches[1]);
+                $afterAttributes = preg_replace('/class\s*=\s*"[^"]*"/i', '', $matches[3]);
+                return '<a ' . trim($beforeAttributes) . ' ' . $classAttribute . ' ' . trim($afterAttributes) . ' href="' . $matches[2] . '">' . $matches[4] . '</a>';
+            }
+
+            // If no match, return the <a> tag unchanged
+            return '<a ' . trim($matches[1]) . 'href="' . $matches[2] . '" ' . trim($matches[3]) . '>' . $matches[4] . '</a>';
+        };
+
+        // Perform the replacement using preg_replace_callback to apply the callback to each match
+        return preg_replace_callback($pattern, $callback, $headerCode);
+    }
+
+
 
 
     // Function to handle base64 image and save it
@@ -1094,6 +1198,20 @@ new class extends Component implements HasForms {
 
     private function buildFullHtml($data)
     {
+
+
+        try {
+        // Call the function to add the 'active' class to the menu items
+        $data['header_html'] = $this->addActiveClassToMenu($data['header_html'], $data['page_slug']);
+    } catch (Exception $e) {
+        // Log the error for debugging purposes
+        Notification::make()
+            ->danger()
+            ->title('Menu Class Error')
+            ->body("Failed to update menu items with the active class. Please try again later.")
+            ->send();            
+    }
+
         $boilerplate = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -1396,6 +1514,7 @@ HTML;
     public function previewGenerate() {
         $this->isPreview = true;
         $this->shouldRedirect = false;
+        $this->deletePreview();
         $live = $this->previewWebsite();
 
         if ($live['status'] === 'danger') {
@@ -1411,15 +1530,17 @@ HTML;
                 return redirect('/websites' . '/' . $this->project->project_id);
             }
             elseif ($live['status'] === 'success') {
-                return redirect('/preview' . '/' . $this->project->project_id . '/index.html');
-        } else {
-            Notification::make()
-                ->danger()
-                ->title('Something Went Wrong')
-                ->body("Please try again later.")
-                ->send();
-            return redirect('/websites' . '/' . $this->project->project_id);
-        }
+                
+                $this->dispatch('redirectToPreview');
+                return;
+            } else {
+                Notification::make()
+                    ->danger()
+                    ->title('Something Went Wrong')
+                    ->body("Please try again later.")
+                    ->send();
+                return redirect('/websites' . '/' . $this->project->project_id);
+            }
 
 
         $this->isPreview = false;
@@ -1430,10 +1551,10 @@ HTML;
 
 }
 ?>
-
 <x-layouts.app>
     @volt('websites.edit')
     <x-app.container>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
 
@@ -1970,7 +2091,42 @@ HTML;
         </div>
 
 
+<a href="/preview/{{$this->project->project_id}}/index.html" target="_blank" id="redirect-button" style="display: none;"></a>
 
+
+
+
+@script
+<script>
+
+    $wire.on('redirectToPreview', () => {
+        var btn = document.getElementById('redirect-button');
+        btn.click();
+    });
+
+
+
+
+
+ document.addEventListener('DOMContentLoaded', function() {
+        // Generate the screenshot
+        html2canvas(document.getElementById('headerImg')).then(function(canvas) {
+            // Convert the canvas to a data URL (image)
+            var img = canvas.toDataURL("image/png");
+            
+            // Display the image in the img tag
+            var screenshotImg = document.getElementById('screenshot');
+            screenshotImg.src = img;
+            screenshotImg.style.display = 'block';
+        });
+    });
+
+
+
+
+
+</script>
+@endscript
 
 
     </x-app.container>

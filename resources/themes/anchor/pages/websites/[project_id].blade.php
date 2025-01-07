@@ -27,7 +27,6 @@ new class extends Component implements HasForms {
     public $project_id; // The project_id from the URL
     public Project $project;  // Holds the project instance
     public ?array $data = []; // Holds form data
-    public $activeTab = 'overview'; // Active tab (default: overview)
     public $pages;
     public $pageData = [];
     public $header;
@@ -60,11 +59,13 @@ new class extends Component implements HasForms {
             ->where("is_header", false)
             ->first();
         if (!$this->header) {
-            $this->headerCreate();
+            $this->header = $this->headerCreate();
         }
         if (!$this->footer) {
-            $this->footerCreate();
+            $this->footer = $this->footerCreate();
         }
+        
+
 
 
         $this->liveData = [
@@ -93,6 +94,12 @@ new class extends Component implements HasForms {
             ];
         }
         ;
+
+        if (!$this->mainPage && $this->pages->isNotEmpty()) {
+            $this->mainPage = $this->pages->first();
+            $this->mainPage->main = true; // Assuming `main` is the column to mark the main page
+            $this->mainPage->save(); // Save the updated main page
+        }
 
         $this->liveData['pages'] = $this->pages->pluck('id')->toArray(); // Populate with all page IDs
 
@@ -135,16 +142,10 @@ new class extends Component implements HasForms {
     }
 
 
-    public function pagesSetForm()
-    {
-        $this->activeTab = "pages";
-    }
 
 
-    public function websiteSettingsSetForm()
-    {
-        $this->activeTab = "website_settings";
-    }
+
+
 
     // Define the form schema
     public function form(Form $form): Form
@@ -175,6 +176,7 @@ new class extends Component implements HasForms {
                     ->directory("usersites/{$this->project->project_id}")
                     ->disk('public')
                     ->maxSize(1024)
+                    ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml',])
                     ->helperText('Upload a favicon for your website'),
 
                 // Robots.txt Textarea
@@ -195,40 +197,7 @@ new class extends Component implements HasForms {
                     ->placeholder('Add custom embed code for the footer')
                     ->rows(5),
             ])
-            ->statePath('data');
-
-        if ($this->activeTab === 'pages') {
-
-            return $form
-                ->schema([
-                    TextInput::make('page_name')
-                        ->label('Page Name')
-                        ->readonly()
-                        ->maxLength(255),
-                    TextInput::make('page_title')
-                        ->label('Page Title')
-                        ->placeholder('Enter page title')
-                        ->maxLength(255),
-                    Textarea::make('page_meta_description')
-                        ->label('Meta Description')
-                        ->placeholder('Enter meta description')
-                        ->rows(3)
-                        ->maxLength(500),
-                    Textarea::make('page_og_tags')
-                        ->label('Open Graph Tags')
-                        ->placeholder('Enter OG tags')
-                        ->rows(3),
-                    Textarea::make('page_header_embed_code')
-                        ->label('Header Embed Code')
-                        ->placeholder('Paste header embed code here')
-                        ->rows(3),
-                    Textarea::make('page_footer_embed_code')
-                        ->label('Footer Embed Code')
-                        ->placeholder('Paste footer embed code here')
-                        ->rows(3),
-                ])
-                ->statePath('pageData');
-        }
+        ->statePath('data');
     }
 
 
@@ -240,7 +209,7 @@ new class extends Component implements HasForms {
     {
         // Create a new private template based on the project
         PrivateTemplate::create([
-            'template_name' => $this->project->project_name . ' (Created from My Websites)',
+            'template_name' => $this->project->project_name . ' - My Template',
             'description' => $this->project->description,
             'template_json' => $this->project->project_json,
             'user_id' => auth()->id(), // Associate with the logged-in user
@@ -306,27 +275,165 @@ new class extends Component implements HasForms {
             ->title('Website updated successfully')
             ->send();
 
-        $this->redirect('/websites');
+        $this->redirect('/websites' . '/' . $this->project->project_id);
     }
 
     // Duplicate the project
     public function duplicate(): void
     {
         $newProject = $this->project->replicate();
-        $newProject->project_name = $this->project->project_name . ' (Copy)';
-        $newProject->save();
+
+// Generate a unique project name by appending a number
+$newProjectName = $this->project->project_name;
+$counter = 1;
+
+// Check if a project with the same name already exists
+while (Project::where('project_name', $newProjectName)->exists()) {
+    // Append the counter in the correct format
+    $newProjectName = $this->project->project_name . ' (' . $counter . ')';
+    $counter++;
+}
+
+// Set the new unique project name
+$newProject->project_name = $newProjectName;
+
+// Check if the project has a domain set
+if ($this->project->domain) {
+    // Initialize the base domain name
+    $domainBase = $this->project->domain;
+    $newDomain = $domainBase;
+    $counter = 1;
+
+    // Check if the domain already exists in the database
+    while (Project::where('domain', $newDomain)->exists()) {
+        // Append the counter to the base domain until a unique domain is found
+        $newDomain = $domainBase . $counter;
+        $counter++;
+    }
+
+    // Set the new unique domain
+    $newProject->domain = $newDomain;
+}
+
+if ($newProject->live) {
+    $newProject->live = false;
+}
+
+$newProject->save();
+
+
+        // Duplicate associated files
+    $sourceFolder = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}";
+    $targetFolder = "/var/www/ezysite/public/storage/usersites/{$newProject->project_id}";
+
+    if (file_exists($sourceFolder)) {
+        // Create the target folder if it doesn't exist
+        if (!file_exists($targetFolder)) {
+            mkdir($targetFolder, 0777, true);
+        }
+
+        // Recursive function to copy files and directories
+        $this->copyDirectory($sourceFolder, $targetFolder);
+    }
+
+    // Duplicate header and footer
+    $newHeader = $this->header->replicate();
+    $newHeader->website_id = $newProject->project_id;
+    $newHeader->save();
+    $newFooter = $this->footer->replicate();
+    $newFooter->website_id = $newProject->project_id;
+    $newFooter->save();
+
+    foreach ($this->pages as $page) {
+        $newPage = $page->replicate();
+        $newPage->website_id = $newProject->project_id;
+        $newPage->save();
+    }
+
 
         Notification::make()
             ->success()
             ->title('Website duplicated successfully')
             ->send();
 
-        $this->redirect('/websites');
+        $this->redirect('/websites' . '/' . $newProject->project_id);
+    }
+
+    // Recursive function to copy files and directories
+    public function copyDirectory($source, $target)
+    {
+        // Check if the source is a file or directory
+        if (is_file($source)) {
+            copy($source, $target);
+        } elseif (is_dir($source)) {
+            // Create the target directory if it doesn't exist
+            if (!is_dir($target)) {
+                mkdir($target, 0777, true);
+            }
+
+            // Get all files and subdirectories inside the source directory
+            $files = array_diff(scandir($source), ['.', '..']);
+
+            // Loop through files and subdirectories and copy them
+            foreach ($files as $file) {
+                $filePath = $source . DIRECTORY_SEPARATOR . $file;
+                $targetPath = $target . DIRECTORY_SEPARATOR . $file;
+
+                if (is_dir($filePath)) {
+                    // Recursively copy subdirectories
+                    $this->copyDirectory($filePath, $targetPath);
+                } else {
+                    // Copy the file
+                    copy($filePath, $targetPath);
+                }
+            }
+        }
     }
 
     // Delete the project
     public function delete(): void
     {
+
+         // Check if the project is live
+    if ($this->project->live) {
+        // Temporarily disable redirection
+        $this->shouldRedirect = false;
+    $delete = $this->deleteLiveWebsite();
+
+
+
+        if($delete['status'] === 'danger'){
+
+            $title = $delete['title'];  // Set title for live
+            $body = $delete['body'];    // Set body for live
+            
+            // Send notification
+            Notification::make()
+                ->danger()
+                ->title($title)
+                ->body($body)
+                ->send();
+
+            $this->redirect('/websites' . '/' . $this->project->project_id);
+            return;
+        }
+    }
+
+
+    // Define the target folder path
+        $targetFolder = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}";
+
+        // Check if the folder exists
+        if (file_exists($targetFolder)) {
+            // Recursive function to delete files and directories
+            $this->deleteDirectory($targetFolder);
+        }
+        $this->deletePreview();
+        $this->header->delete();
+        $this->footer->delete();
+        foreach ($this->pages as $page) {
+            $page->delete();
+        }
         $this->project->delete();
 
         Notification::make()
@@ -336,6 +443,10 @@ new class extends Component implements HasForms {
 
         $this->redirect('/websites');
     }
+
+
+
+
 
     public function convertToSlug($string)
     {
@@ -373,6 +484,11 @@ new class extends Component implements HasForms {
             // Ensure the slug is not empty after conversion
             if (empty($slug)) {
                 $slug = Str::slug($data["page_name"]);
+            }
+
+            // Ensure the slug is not empty after conversion
+            if (empty($slug)) {
+                $slug = Str::slug("Default slug");
             }
 
             // Ensure the slug is unique within the project
@@ -550,6 +666,25 @@ new class extends Component implements HasForms {
         $globalFooterEmbed = $this->liveData['global_footer_embed'] ?? '';
 
 
+         if(!$this->mainPage){
+            if ($this->shouldRedirect) {
+                Notification::make()
+                    ->danger()
+                    ->title('No Main Page')
+                    ->body('You must select a main page for your website to preview.')
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'danger',
+                    'title' => 'No Main Page',
+                    "body" => 'You must select a main page for your website to preview.',
+                ];
+            }
+        }
+
+
         // Ensure the target folder exists
         $targetFolder = "/var/www/ezysite/resources/views/preview/{$domain}";
         if (!file_exists($targetFolder)) {
@@ -560,7 +695,7 @@ new class extends Component implements HasForms {
                     Notification::make()
                         ->danger()
                         ->title('Domain Configuration Error')
-                        ->body("Failed to create directory for the domain: {$domain}")
+                        ->body("Failed to create preview for the domain: {$domain}")
                         ->send();
 
                     return redirect('/websites' . '/' . $this->project->project_id);
@@ -568,7 +703,7 @@ new class extends Component implements HasForms {
                     return [
                         'status' => 'danger',
                         'title' => 'Domain Configuration Error',
-                        "body" => "Failed to create directory for the domain: {$domain}",
+                        "body" => "Failed to create preview for the domain: {$domain}",
                     ];
                 }
 
@@ -720,6 +855,41 @@ new class extends Component implements HasForms {
     }
 
 
+    
+    public function saveDomain(){
+        $domain = $this->liveData['domain'];
+        if(!$this->check()){
+            Notification::make()
+                ->danger()
+                ->title('Domain Error')
+                ->body('You must select correct domain for your website.')
+                ->send();
+
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+
+        $domain = Str::slug($domain);
+
+        // Update project domain
+        $this->project->update([
+            'domain' => $domain,
+        ]);
+
+        
+
+        Notification::make()
+            ->success()
+            ->title('Domain Reserved')
+            ->body('The domain for your website has been successfully reserved.')
+            ->send();
+
+        $this->redirect('/websites' . '/' . $this->project->project_id);
+    }
+
+
+
+
+
     public function liveWebsite() {
         $preview = $this->isPreview;
         // Access liveData array
@@ -751,15 +921,7 @@ new class extends Component implements HasForms {
             }
         }
 
-        // Check if domain is empty
-        if (empty($domain)) {
-            // Generate a default domain using the project's name or a unique identifier
-            $defaultDomain = Str::slug($this->project->project_name) . '-' . uniqid();
-            $domain = $defaultDomain;
-        } else {
-            // Append subdomain suffix if not already present
-            $domain = Str::slug($domain);
-        }
+        $domain = Str::slug($domain);
 
         // Update project domain
         $this->project->update([
@@ -786,6 +948,26 @@ new class extends Component implements HasForms {
             }
         }
 
+
+
+        if(!$this->mainPage){
+            if ($this->shouldRedirect) {
+                Notification::make()
+                    ->danger()
+                    ->title('No Main Page')
+                    ->body('You must select a main page for your website to live.')
+                    ->send();
+
+                return redirect('/websites' . '/' . $this->project->project_id);
+            } else {
+                return [
+                    'status' => 'danger',
+                    'title' => 'No Main Page',
+                    "body" => 'You must select a main page for your website to live.',
+                ];
+            }
+        }
+
         // Ensure the target folder exists
         $targetFolder = "/var/www/domain/{$domain}";
         if (!file_exists($targetFolder)) {
@@ -796,7 +978,7 @@ new class extends Component implements HasForms {
                     Notification::make()
                         ->danger()
                         ->title('Domain Configuration Error')
-                        ->body("Failed to create directory for the domain: {$domain}")
+                        ->body("Failed to create website for the domain: {$domain}")
                         ->send();
 
                     return redirect('/websites' . '/' . $this->project->project_id);
@@ -804,7 +986,7 @@ new class extends Component implements HasForms {
                     return [
                         'status' => 'danger',
                         'title' => 'Domain Configuration Error',
-                        "body" => "Failed to create directory for the domain: {$domain}",
+                        "body" => "Failed to create website for the domain: {$domain}",
                     ];
                 }
 
@@ -1735,7 +1917,7 @@ HTML;
 
                                 <!-- Delete Website -->
                                 <a href="#" wire:click="delete"
-                                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
+                                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center" wire:confirm="Are you sure you want to delete this website?">
                                     <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Website
                                 </a>
                             </x-dropdown>
@@ -1946,20 +2128,12 @@ HTML;
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </div>
-                        <div x-show="open" x-transition.duration.300ms x-cloak class="bg-white-100 p-4 rounded-md shadow-md mt-3">
-                            <!-- Header Preview Content
-                            <div class="header-preview" style="border: 1px solid #ccc; pointer-events: none; user-select: none;">
-                                <style>
-                                    {!! $this->header->css !!}
-                                </style>
-                                {!! $this->header->html !!}
-                            </div> -->
-                    
+                        <div x-show="open" x-transition.duration.300ms x-cloak class="bg-white-100 p-4 rounded-md shadow-md mt-3">                    
                             <!-- Buttons (only shown when section is open) -->
                             <div class="flex justify-end gap-x-3 mt-3">
                                 <x-button tag="a" :href="route('header', ['project_id' => $this->project->project_id])" target="_blank">Edit
                                     Header</x-button>
-                                <x-button color="danger" type="button" wire:click="resetHeaderToDefault">Reset Header to Default</x-button>
+                                <x-button color="danger" type="button" wire:click="resetHeaderToDefault" wire:confirm="Are you sure you want to reset header to default?">Reset Header to Default</x-button>
                             </div>
                         </div>
                     </div>
@@ -1973,20 +2147,12 @@ HTML;
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </div>
-                        <div x-show="open" x-transition.duration.300ms x-cloak class="bg-white-100 p-4 mt-3 rounded-md shadow-md">
-                            <!-- Footer Preview Content
-                            <div class="footer-preview" style="border: 1px solid #ccc; pointer-events: none; user-select: none;">
-                                <style>
-                                    {!! $this->footer->css !!}
-                                </style>
-                                {!! $this->footer->html !!}
-                            </div> -->
-                    
+                        <div x-show="open" x-transition.duration.300ms x-cloak class="bg-white-100 p-4 mt-3 rounded-md shadow-md">                    
                             <!-- Buttons (only shown when section is open) -->
                             <div class="flex justify-end gap-x-3 mt-3">
                                 <x-button tag="a" :href="route('footer', ['project_id' => $this->project->project_id])" target="_blank">Edit
                                     Footer</x-button>
-                                <x-button color="danger" type="button" wire:click="resetFooterToDefault">Reset Footer to Default</x-button>
+                                <x-button color="danger" type="button" wire:click="resetFooterToDefault" wire:confirm="Are you sure you want to reset footer to default?">Reset Footer to Default</x-button>
                             </div>
                         </div>
                     </div>
@@ -2019,6 +2185,8 @@ HTML;
                         </div>
                             <span>{!! $this->message !!}</span>
                     </div>
+
+
                 
                     <div x-data="{ open: false }" class="grid gap-y-2">
                         <div class="flex justify-between items-center">
@@ -2076,6 +2244,9 @@ HTML;
                         </x-button>
                             <x-button color="danger" type="button" wire:click="deleteLiveWebsite"  wire:confirm="Are you sure you want to take down this website?">Take Down</x-button>
                     @else
+                    <x-button wire:click="saveDomain" type="submit" color="secondary">
+                            Reserve Your Domian
+                        </x-button>
                         <!-- Make it Live Button -->
                         <x-button wire:click="liveWebsite" type="submit" color="primary">
                             Go Live

@@ -330,10 +330,10 @@ class BuilderController extends Controller
         }
     }
 
-    public function pageDelete($id)
+    public function pageDelete(Request $request, $id)
     {
         // Find the page by ID
-        $page = WebPage::where('page_id', $id);
+        $page = WebPage::where('page_id', $id)->where('website_id', $request->websiteId)->first();
 
         // Check if page exists
         if (!$page) {
@@ -357,7 +357,7 @@ class BuilderController extends Controller
     public function pageRename(Request $request, $id)
     {
         // Find the page by ID
-        $page = WebPage::where('page_id', $request->page_id)->first();
+        $page = WebPage::where('page_id', $request->page_id)->where('website_id', $request->websiteId)->first();
 
         // Check if page exists
         if (!$page) {
@@ -382,7 +382,7 @@ class BuilderController extends Controller
 
     public function pageHtmlCss(Request $request)
     {
-        $page = WebPage::where('page_id', $request->pageId)->first();
+        $page = WebPage::where('page_id', $request->pageId)->where('website_id', $request->websiteId)->first();
         // If the page doesn't exist, return 404
         // Check if header and footer data exists
         if (!$page) {

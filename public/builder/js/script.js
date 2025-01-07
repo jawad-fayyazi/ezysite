@@ -107,6 +107,7 @@ function saveContent() {
     html: htmlContent,
     css: cssContent,
     pageId: activePageId, // Replace this with the actual current page ID
+    websiteId: projectId,
   };
 
   // Send data to backend (using Fetch API)
@@ -297,6 +298,7 @@ function renderPages() {
             const updatedPageData = {
               name: newPageName,
               page_id: pageId,
+              websiteId: projectId,
             };
 
             // Send the updated page name to the backend
@@ -356,6 +358,9 @@ function renderPages() {
         if (
           confirm(`Are you sure you want to delete the page: "${pageName}"?`)
         ) {
+          const reqData = {
+            websiteId: projectId,
+          };
           // Send DELETE request to backend to remove the page from the database
           fetch(`/pages/${pageId}`, {
             method: "DELETE",
@@ -365,6 +370,7 @@ function renderPages() {
                 .querySelector('meta[name="csrf-token"]')
                 .getAttribute("content"), // CSRF token
             },
+            body: JSON.stringify(reqData),
           })
             .then((response) => response.json())
             .then((data) => {

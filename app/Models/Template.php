@@ -23,6 +23,10 @@ class Template extends Model
         'template_json',
         'template_image',
         'template_preview_link',
+        'favicon',
+        'robots_txt',
+        'header_embed',
+        'footer_embed',
         // Add other columns that may exist in your templates table
     ];
 
@@ -35,5 +39,18 @@ class Template extends Model
     public function category()
     {
         return $this->belongsTo(TemplateCategory::class, 'template_category_id');
+    }
+
+    public function tempPages()
+    {
+        return $this->hasMany(TempPage::class, 'template_id');
+    }
+
+    /**
+     * Define the one-to-many relationship with the TemplateHeaderFooter model
+     */
+    public function templateHeaderFooters()
+    {
+        return $this->hasMany(TemplateHeaderFooter::class, 'template_id');
     }
 }

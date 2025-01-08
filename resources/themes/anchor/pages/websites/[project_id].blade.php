@@ -176,7 +176,7 @@ new class extends Component implements HasForms {
                     ->directory("usersites/{$this->project->project_id}")
                     ->disk('public')
                     ->maxSize(1024)
-                    ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml',])
+                    ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png',])
                     ->helperText('Upload a favicon for your website'),
 
                 // Robots.txt Textarea
@@ -1791,10 +1791,11 @@ HTML;
                         <x-app.heading title="{{ $this->project->project_name }}"
                             description="{{ $this->project->description ?? 'No description available' }}" :border="false" class="mr-8" />
                     </div>
-
-                    <x-button tag="a" :href="route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name])" target="_blank">Open In Builder</x-button>
-                    
                 </div>
+
+
+
+
                 
                 <!-- Domain or URL -->
                 <div class="space-y-2">
@@ -1819,10 +1820,13 @@ HTML;
                     @endif
                 </div>
             </div>
+<div class="flex justify-end gap-x-3">
+    <x-button tag="a" :href="route('builder', ['project_id' => $this->project->project_id, 'project_name' => $this->project->project_name])" target="_blank">Open In Builder</x-button>    
+                            <x-button type="button" wire:click="previewGenerate" color="gray">Preview Website</x-button>
 
-                            <div class="flex items-center justify-end">
-                            <x-button type="button" wire:click="previewGenerate" color="secondary">Preview Website</x-button>
-                            </div>
+
+</div>
+
             
 
     <div x-data="{ activeTab: 'pages' }">
@@ -1882,8 +1886,12 @@ HTML;
     x-cloak 
     id="website-settings" 
     class="space-y-6 tab-panel">
+
+                    <div class="flex items-center justify-between mb-5">
+                        <!-- Display the current project name as a heading -->
+                        <x-app.heading title="Website Settings" description="Customize your website's configuration." :border="false" />
+                    </div>
                     <form wire:submit="edit" class="space-y-6">
-                        <h2 class="text-lg font-semibold grid gap-y-2">Website Settings</h2>
 
                         <!-- Render the form fields here -->
                         {{ $this->form }}
@@ -1938,7 +1946,7 @@ HTML;
     class="space-y-6 tab-panel">
                     <div class="flex items-center justify-between mb-5">
                         <!-- Display the current project name as a heading -->
-                        <h2 class="text-2xl font-semibold">Pages</h2>
+                        <x-app.heading title="Pages" description="Configure your website's pages." :border="false" />
                     </div>
                     <div class="space-y-4 mt-4">
                         @foreach($this->pages as $page)
@@ -1946,12 +1954,12 @@ HTML;
                                                 <!-- Page Header with Toggle -->
                             <div class="flex justify-between items-center">
                                 <div @click="open = !open" class="cursor-pointer text-md font-semibold w-full flex justify-between">
-                                    <span>{{ $page->name }}</span>
-                                    @if($page->main)
-                                    <span class="ml-2 text-xs font-medium text-white bg-green-500 px-2 py-1 rounded-full">
-                                        Main Page
-                                    </span>
+                                    <span>{{ $page->name }} 
+                                        @if($page->main)
+                                    <x-icon name="phosphor-house-line" class="w-4 h-4 ml-2 inline-block" />
                                     @endif
+                                    </span>
+                                    
                                     <!-- Arrow Icon for Collapsible -->
                                     <svg x-bind:class="open ? 'transform rotate-180' : ''" class="w-5 h-5 transition-transform duration-300" fill="none"
                                         stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -2082,16 +2090,17 @@ HTML;
                                                                 <!-- Cancel Button -->
                                                                 <x-button @click="open = !open" class="page-cancel" type="button"
                                                                     color="secondary">Cancel</x-button>
-
-                                                                <!-- mainpage Button -->
-                                                                <x-button type="button" wire:click="pageMain({{ $page->id }})"
-                                                                    class="text-white bg-primary-600 hover:bg-primary-500">Set as Main
-                                                                    Page</x-button>
-
-                                                                <!-- Save Changes Button -->
-                                                                <x-button type="button" wire:click="pageUpdate({{ $page->id }})"
+                                                                    
+                                                                    <!-- Save Changes Button -->
+                                                                    <x-button type="button" wire:click="pageUpdate({{ $page->id }})"
                                                                     class="text-white bg-primary-600 hover:bg-primary-500">Save
                                                                     Changes</x-button>
+                                                                    @if (!$page->main)
+                                                                    <!-- mainpage Button -->
+                                                                    <x-button type="button" wire:click="pageMain({{ $page->id }})"
+                                                                       color="gray">Set as Main
+                                                                        Page</x-button>
+                                                                    @endif
                                                             </div>
 
 
@@ -2122,7 +2131,7 @@ HTML;
                     <!-- Collapsible Section for Header -->
                     <div x-data="{ open: false }" class="mb-5">
                         <div class="flex justify-between items-center cursor-pointer" @click="open = ! open">
-                            <h3 class="text-md font-semibold">Header Preview</h3>
+                            <h3 class="text-md font-semibold">Header</h3>
                             <svg x-bind:class="open ? 'transform rotate-180' : ''" class="w-5 h-5 transition-transform duration-300"
                                 fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -2133,7 +2142,7 @@ HTML;
                             <div class="flex justify-end gap-x-3 mt-3">
                                 <x-button tag="a" :href="route('header', ['project_id' => $this->project->project_id])" target="_blank">Edit
                                     Header</x-button>
-                                <x-button color="danger" type="button" wire:click="resetHeaderToDefault" wire:confirm="Are you sure you want to reset header to default?">Reset Header to Default</x-button>
+                                <x-button color="danger" type="button" wire:click="resetHeaderToDefault" wire:confirm="Are you sure you want to reset header to default?">Reset Header</x-button>
                             </div>
                         </div>
                     </div>
@@ -2141,7 +2150,7 @@ HTML;
                     <!-- Collapsible Section for Footer -->
                     <div x-data="{ open: false }">
                         <div class="flex justify-between items-center cursor-pointer" @click="open = ! open">
-                            <h3 class="text-md font-semibold">Footer Preview</h3>
+                            <h3 class="text-md font-semibold">Footer</h3>
                             <svg x-bind:class="open ? 'transform rotate-180' : ''" class="w-5 h-5 transition-transform duration-300"
                                 fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -2152,7 +2161,7 @@ HTML;
                             <div class="flex justify-end gap-x-3 mt-3">
                                 <x-button tag="a" :href="route('footer', ['project_id' => $this->project->project_id])" target="_blank">Edit
                                     Footer</x-button>
-                                <x-button color="danger" type="button" wire:click="resetFooterToDefault" wire:confirm="Are you sure you want to reset footer to default?">Reset Footer to Default</x-button>
+                                <x-button color="danger" type="button" wire:click="resetFooterToDefault" wire:confirm="Are you sure you want to reset footer to default?">Reset Footer</x-button>
                             </div>
                         </div>
                     </div>
@@ -2171,7 +2180,10 @@ HTML;
     x-cloak 
     id="live-settings" 
     class="space-y-6 tab-panel">
-                    <h1 class="text-2xl font-bold mb-4">Make Your Website Live</h1>
+                    <div class="flex items-center justify-between mb-5">
+                        <!-- Display the current project name as a heading -->
+                        <x-app.heading title="Live Settings" description="Set up your domain and publish your website online." :border="false" />
+                    </div>
                 
                     <!-- Subdomain Input -->
                     <div class="grid gap-y-2">
@@ -2244,12 +2256,14 @@ HTML;
                         </x-button>
                             <x-button color="danger" type="button" wire:click="deleteLiveWebsite"  wire:confirm="Are you sure you want to take down this website?">Take Down</x-button>
                     @else
-                    <x-button wire:click="saveDomain" type="submit" color="secondary">
+                        <!-- Cancel Button -->
+                    <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
+                    <!-- Make it Live Button -->
+                    <x-button wire:click="liveWebsite" type="submit" color="primary">
+                        Go Live
+                    </x-button>
+                    <x-button wire:click="saveDomain" type="submit" color="gray">
                             Reserve Your Domian
-                        </x-button>
-                        <!-- Make it Live Button -->
-                        <x-button wire:click="liveWebsite" type="submit" color="primary">
-                            Go Live
                         </x-button>
                     @endif
                     </div>

@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="This is meta description of products page">
+    
+    <title>Products - Gmaing PC Store</title>
+    <style>
+        * {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding-top:20px;
+  padding-right:50px;
+  padding-bottom:20px;
+  padding-left:50px;
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgba(0, 0, 0, 0.8);
+  position:fixed;
+  width:100%;
+  z-index:10;
+  box-shadow:rgba(0, 0, 0, 0.3) 0px 4px 8px;
+  font-family:Poppins, sans-serif;
+}
+.logo{
+  font-size:2rem;
+  font-weight:bold;
+  color:rgb(255, 111, 97);
+}
+nav a{
+  color:white;
+  text-decoration-line:none;
+  text-decoration-thickness:initial;
+  text-decoration-style:initial;
+  text-decoration-color:initial;
+  margin-top:0px;
+  margin-right:15px;
+  margin-bottom:0px;
+  margin-left:15px;
+  font-size:1.2rem;
+  transition-behavior:normal;
+  transition-duration:0.3s;
+  transition-timing-function:ease;
+  transition-delay:0s;
+  transition-property:color;
+}
+nav a:hover{
+  color:rgb(255, 111, 97);
+}
+
+        * {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+body{
+  margin-top:0px;
+  margin-right:0px;
+  margin-bottom:0px;
+  margin-left:0px;
+  font-family:Poppins, sans-serif;
+  background-color:rgb(13, 13, 13);
+  color:white;
+  overflow-x:hidden;
+}
+.hero{
+  background-image:url("https://via.placeholder.com/1920x600?text=Contact+Gaming+PCs");
+  background-position-x:center;
+  background-position-y:center;
+  background-size:cover;
+  background-repeat:no-repeat;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:initial;
+  height:600px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  animation-duration:1s;
+  animation-timing-function:ease-out;
+  animation-delay:0s;
+  animation-iteration-count:1;
+  animation-direction:normal;
+  animation-fill-mode:none;
+  animation-play-state:running;
+  animation-name:fadeIn;
+  animation-timeline:auto;
+  animation-range-start:normal;
+  animation-range-end:normal;
+}
+.hero h1{
+  font-size:4rem;
+  margin-bottom:20px;
+  animation-duration:1s;
+  animation-timing-function:ease-out;
+  animation-delay:0s;
+  animation-iteration-count:1;
+  animation-direction:normal;
+  animation-fill-mode:none;
+  animation-play-state:running;
+  animation-name:fadeIn;
+  animation-timeline:auto;
+  animation-range-start:normal;
+  animation-range-end:normal;
+}
+.hero p{
+  font-size:1.5rem;
+  margin-bottom:30px;
+  animation-duration:1.5s;
+  animation-timing-function:ease-out;
+  animation-delay:0s;
+  animation-iteration-count:1;
+  animation-direction:normal;
+  animation-fill-mode:none;
+  animation-play-state:running;
+  animation-name:fadeIn;
+  animation-timeline:auto;
+  animation-range-start:normal;
+  animation-range-end:normal;
+  margin-top:20px;
+}
+.hero a{
+  text-decoration-line:none;
+  text-decoration-thickness:initial;
+  text-decoration-style:initial;
+  text-decoration-color:initial;
+  padding-top:15px;
+  padding-right:30px;
+  padding-bottom:15px;
+  padding-left:30px;
+  font-size:1.3rem;
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(255, 111, 97);
+  color:white;
+  border-top-left-radius:5px;
+  border-top-right-radius:5px;
+  border-bottom-right-radius:5px;
+  border-bottom-left-radius:5px;
+  transition-behavior:normal;
+  transition-duration:0.3s;
+  transition-timing-function:ease;
+  transition-delay:0s;
+  transition-property:background;
+  animation-duration:2s;
+  animation-timing-function:ease-out;
+  animation-delay:0s;
+  animation-iteration-count:1;
+  animation-direction:normal;
+  animation-fill-mode:none;
+  animation-play-state:running;
+  animation-name:fadeInDown;
+  animation-timeline:auto;
+  animation-range-start:normal;
+  animation-range-end:normal;
+}
+.hero a:hover{
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(255, 80, 64);
+}
+.features h2{
+  font-size:2.5rem;
+  margin-bottom:20px;
+}
+.features .feature-grid{
+  display:flex;
+  justify-content:center;
+  row-gap:40px;
+  column-gap:40px;
+  flex-wrap:wrap;
+}
+.feature img{
+  max-width:100%;
+  border-top-left-radius:8px;
+  border-top-right-radius:8px;
+  border-bottom-right-radius:8px;
+  border-bottom-left-radius:8px;
+}
+.products{
+  padding-top:50px;
+  padding-right:20px;
+  padding-bottom:50px;
+  padding-left:20px;
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(24, 24, 24);
+}
+.products h2{
+  text-align:center;
+  font-size:3rem;
+  margin-bottom:40px;
+}
+.product-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));
+  row-gap:20px;
+  column-gap:20px;
+  justify-items:center;
+}
+.product-card{
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(30, 30, 47);
+  border-top-left-radius:8px;
+  border-top-right-radius:8px;
+  border-bottom-right-radius:8px;
+  border-bottom-left-radius:8px;
+  padding-top:20px;
+  padding-right:20px;
+  padding-bottom:20px;
+  padding-left:20px;
+  transition-behavior:normal, normal;
+  transition-duration:0.3s, 0.3s;
+  transition-timing-function:ease, ease;
+  transition-delay:0s, 0s;
+  transition-property:transform, box-shadow;
+  text-align:center;
+}
+.product-card img{
+  max-width:100%;
+  border-top-left-radius:8px;
+  border-top-right-radius:8px;
+  border-bottom-right-radius:8px;
+  border-bottom-left-radius:8px;
+}
+.product-card h3{
+  margin-top:15px;
+  margin-right:0px;
+  margin-bottom:15px;
+  margin-left:0px;
+  color:rgb(255, 111, 97);
+}
+.product-card:hover{
+  transform:translateY(-10px);
+  box-shadow:rgba(0, 0, 0, 0.5) 0px 10px 20px;
+}
+.product-card p{
+  font-size:1.1rem;
+  margin-bottom:15px;
+}
+.product-card a{
+  text-decoration-line:none;
+  text-decoration-thickness:initial;
+  text-decoration-style:initial;
+  text-decoration-color:initial;
+  padding-top:10px;
+  padding-right:20px;
+  padding-bottom:10px;
+  padding-left:20px;
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(255, 111, 97);
+  color:white;
+  border-top-left-radius:5px;
+  border-top-right-radius:5px;
+  border-bottom-right-radius:5px;
+  border-bottom-left-radius:5px;
+  transition-behavior:normal;
+  transition-duration:0.3s;
+  transition-timing-function:ease;
+  transition-delay:0s;
+  transition-property:background;
+}
+.product-card a:hover{
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(255, 80, 64);
+}
+.about h2{
+  text-align:center;
+  font-size:3rem;
+  margin-bottom:40px;
+  color:rgb(255, 111, 97);
+}
+.event:nth-child(2n+1){
+  flex-direction:row-reverse;
+}
+.event img{
+  max-width:45%;
+  border-top-left-radius:10px;
+  border-top-right-radius:10px;
+  border-bottom-right-radius:10px;
+  border-bottom-left-radius:10px;
+}
+.event:nth-child(2n+1) .event-content{
+  transform:translateX(-40px);
+}
+.event:nth-child(2n) .event-content{
+  transform:translateX(40px);
+}
+.contact h2{
+  text-align:center;
+  font-size:3rem;
+  margin-bottom:40px;
+  color:rgb(255, 111, 97);
+}
+.contact-info h3, .contact-form h3{
+  color:rgb(255, 111, 97);
+  margin-bottom:20px;
+}
+.contact-info p, .contact-info a{
+  font-size:1.1rem;
+  margin-bottom:10px;
+}
+.contact-info a{
+  color:rgb(255, 111, 97);
+  text-decoration-line:none;
+  text-decoration-thickness:initial;
+  text-decoration-style:initial;
+  text-decoration-color:initial;
+}
+.contact-info a:hover{
+  text-decoration-line:underline;
+  text-decoration-thickness:initial;
+  text-decoration-style:initial;
+  text-decoration-color:initial;
+}
+form{
+  display:flex;
+  flex-direction:column;
+  row-gap:15px;
+  column-gap:15px;
+}
+input, textarea{
+  width:100%;
+  padding-top:15px;
+  padding-right:15px;
+  padding-bottom:15px;
+  padding-left:15px;
+  font-size:1rem;
+  border-top-width:1px;
+  border-right-width:1px;
+  border-bottom-width:1px;
+  border-left-width:1px;
+  border-top-style:solid;
+  border-right-style:solid;
+  border-bottom-style:solid;
+  border-left-style:solid;
+  border-top-color:rgb(51, 51, 51);
+  border-right-color:rgb(51, 51, 51);
+  border-bottom-color:rgb(51, 51, 51);
+  border-left-color:rgb(51, 51, 51);
+  border-image-source:initial;
+  border-image-slice:initial;
+  border-image-width:initial;
+  border-image-outset:initial;
+  border-image-repeat:initial;
+  border-top-left-radius:5px;
+  border-top-right-radius:5px;
+  border-bottom-right-radius:5px;
+  border-bottom-left-radius:5px;
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(38, 38, 38);
+  color:white;
+  outline-color:initial;
+  outline-style:none;
+  outline-width:initial;
+  transition-behavior:normal;
+  transition-duration:0.3s;
+  transition-timing-function:ease;
+  transition-delay:0s;
+  transition-property:border;
+}
+input:focus, textarea:focus{
+  border-top-width:1px;
+  border-right-width:1px;
+  border-bottom-width:1px;
+  border-left-width:1px;
+  border-top-style:solid;
+  border-right-style:solid;
+  border-bottom-style:solid;
+  border-left-style:solid;
+  border-top-color:rgb(255, 111, 97);
+  border-right-color:rgb(255, 111, 97);
+  border-bottom-color:rgb(255, 111, 97);
+  border-left-color:rgb(255, 111, 97);
+  border-image-source:initial;
+  border-image-slice:initial;
+  border-image-width:initial;
+  border-image-outset:initial;
+  border-image-repeat:initial;
+}
+button{
+  padding-top:15px;
+  padding-right:15px;
+  padding-bottom:15px;
+  padding-left:15px;
+  font-size:1rem;
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(255, 111, 97);
+  color:white;
+  border-top-width:initial;
+  border-right-width:initial;
+  border-bottom-width:initial;
+  border-left-width:initial;
+  border-top-style:none;
+  border-right-style:none;
+  border-bottom-style:none;
+  border-left-style:none;
+  border-top-color:initial;
+  border-right-color:initial;
+  border-bottom-color:initial;
+  border-left-color:initial;
+  border-image-source:initial;
+  border-image-slice:initial;
+  border-image-width:initial;
+  border-image-outset:initial;
+  border-image-repeat:initial;
+  border-top-left-radius:5px;
+  border-top-right-radius:5px;
+  border-bottom-right-radius:5px;
+  border-bottom-left-radius:5px;
+  cursor:pointer;
+  transition-behavior:normal;
+  transition-duration:0.3s;
+  transition-timing-function:ease;
+  transition-delay:0s;
+  transition-property:background;
+}
+button:hover{
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(255, 80, 64);
+}
+iframe{
+  width:100%;
+  height:400px;
+  border-top-width:initial;
+  border-right-width:initial;
+  border-bottom-width:initial;
+  border-left-width:initial;
+  border-top-style:none;
+  border-right-style:none;
+  border-bottom-style:none;
+  border-left-style:none;
+  border-top-color:initial;
+  border-right-color:initial;
+  border-bottom-color:initial;
+  border-left-color:initial;
+  border-image-source:initial;
+  border-image-slice:initial;
+  border-image-width:initial;
+  border-image-outset:initial;
+  border-image-repeat:initial;
+  border-top-left-radius:8px;
+  border-top-right-radius:8px;
+  border-bottom-right-radius:8px;
+  border-bottom-left-radius:8px;
+  box-shadow:rgba(0, 0, 0, 0.5) 0px 4px 10px;
+}
+@keyframes fadeInDown{
+  0%{
+    opacity:0;
+    transform:translateY(-50px);
+  }
+  100%{
+    opacity:1;
+    transform:translateY(0px);
+  }
+}
+@keyframes fadeIn{
+  0%{
+    opacity:0;
+    transform:translateY(50px);
+  }
+  100%{
+    opacity:1;
+    transform:translateY(0px);
+  }
+}
+
+        * {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+footer{
+  background-image:initial;
+  background-position-x:initial;
+  background-position-y:initial;
+  background-size:initial;
+  background-repeat:initial;
+  background-attachment:initial;
+  background-origin:initial;
+  background-clip:initial;
+  background-color:rgb(16, 16, 16);
+  padding-top:20px;
+  padding-right:20px;
+  padding-bottom:20px;
+  padding-left:20px;
+  text-align:center;
+  color:white;
+}
+
+    </style>
+    <!-- Favicon -->
+    <link rel="icon" href="" type="image/png">
+    console.log('code header global');
+</head>
+<body>
+    <body id="izz7">
+  <div id="i0jq">
+    <header>
+      <div class="logo">GamingPCs
+      </div>
+      <nav>
+        <a href="index.html" >Home</a>
+        <a  class="active-menu-item"  href="products.html">Products</a>
+        <a href="about.html" >About</a>
+        <a href="contact.html" >Contact</a>
+      </nav>
+    </header>
+  </div>
+</body>
+    <body id="ixeai">
+  <div id="iuq7n">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Gaming PCs - Products
+    </title>
+    <div class="hero">
+      <div>
+        <h1>Our Products
+        </h1>
+        <p>Discover the ultimate gaming experience
+        </p>
+      </div>
+    </div>
+    <section class="products">
+      <h2>Featured Gaming PCs
+      </h2>
+      <div class="product-grid">
+        <div class="product-card">
+          <img src="https://via.placeholder.com/300x200?text=PC+1" alt="PC 1"/>
+          <h3>Beast X
+          </h3>
+          <p>Unmatched performance with RTX 4090 and i9 13th Gen.
+          </p>
+          <a href="#">Buy Now</a>
+        </div>
+        <div class="product-card">
+          <img src="https://via.placeholder.com/300x200?text=PC+2" alt="PC 2"/>
+          <h3>Gamer Pro
+          </h3>
+          <p>Perfect for streamers with Ryzen 9 and RTX 3080 Ti.
+          </p>
+          <a href="#">Buy Now</a>
+        </div>
+        <div class="product-card">
+          <img src="https://via.placeholder.com/300x200?text=PC+3" alt="PC 3"/>
+          <h3>Elite 7000
+          </h3>
+          <p>All-in-one beast featuring Ryzen 7 and RTX 3060.
+          </p>
+          <a href="#">Buy Now</a>
+        </div>
+        <div class="product-card">
+          <img src="https://via.placeholder.com/300x200?text=PC+4" alt="PC 4"/>
+          <h3>Turbo Gamer
+          </h3>
+          <p>Compact and powerful with i7 and RTX 3070.
+          </p>
+          <a href="#">Buy Now</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+    <body>
+  <div id="i0yx">
+    <footer>
+      <p>© 2024 GamingPCs. All rights reserved.
+      </p>
+    </footer>
+  </div>
+</body>
+    console.log('code footer global');
+</body>
+</html>

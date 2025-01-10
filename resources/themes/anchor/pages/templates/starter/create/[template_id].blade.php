@@ -8,6 +8,10 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Livewire\Volt\Component;
 use App\Models\Template;
+use App\Models\TemplateHeaderFooter;
+use App\Models\TempPage;
+use App\Models\WebPage; // Assuming you have the WebPage model
+use App\Models\HeaderFooter;
 use App\Models\Project;
 use App\Models\TemplateCategory; // Import TemplateCategory model
 use function Laravel\Folio\{middleware, name};
@@ -22,6 +26,10 @@ new class extends Component implements HasForms {
     public $template;
     public $template_category; // New variable to hold the template category name
     public ?array $data = [];
+    public $header;
+    public $footer;
+    public $pages = [];
+    public $mainPage;
 
     public function mount($template_id): void
     {
@@ -35,6 +43,27 @@ new class extends Component implements HasForms {
             $this->template_category = $this->template->category->name; // Set the category name from the relationship
         }
         $this->form->fill();
+
+
+        $this->header = TemplateHeaderFooter::where("template_id", $this->template->template_id)
+            ->where("is_header", true)
+            ->first();
+        $this->footer = TemplateHeaderFooter::where("template_id", $this->template->template_id)
+            ->where("is_header", false)
+            ->first();
+
+        $this->pages = TempPage::where('template_id', $this->template_id)->get();
+
+
+        $this->mainPage = TempPage::where('template_id', $this->template_id)
+            ->where('main', true)
+            ->first();
+
+        if (!$this->mainPage && $this->pages->isNotEmpty()) {
+            $this->mainPage = $this->pages->first();
+            $this->mainPage->main = true; // Assuming `main` is the column to mark the main page
+            $this->mainPage->save(); // Save the updated main page
+        }
     }
 
 
@@ -53,6 +82,31 @@ new class extends Component implements HasForms {
             ->statePath('data');
     }
 
+
+    public function copyImage($sourcePath, $destinationPath)
+    {
+        // Check if the source file exists
+        if (File::exists($sourcePath)) {
+            // Create the destination folder if it doesn't exist
+            $destinationFolder = dirname($destinationPath);
+            if (!File::exists($destinationFolder)) {
+                if (!File::makeDirectory($destinationFolder, 0755, true)) {
+                    return 'danger';
+                }  // Creates the directory with the right permissions
+            }
+
+            // Copy the file to the new destination
+            if (File::copy($sourcePath, $destinationPath)) {
+                return "success";
+            } else {
+                return 'danger';
+            }
+        }
+
+        return "danger";
+    }
+
+
     public function create(): void
     {
         if (!$this->template) {
@@ -66,12 +120,87 @@ new class extends Component implements HasForms {
         }
 
         $templateJson = json_decode($this->template->template_json, true);
+        $robotsTxt = $this->template->robots_txt;
+        $headerEmbedGlobal = $this->template->header_embed;
+        $footerEmbedGlobal = $this->template->footer_embed;
+        $favIcon = $this->template->favicon;
 
-        auth()->user()->projects()->create([
+        $headerJson = json_decode($this->header->json, true);
+        $footerJson = json_decode($this->footer->json, true);
+        $headerHtml = $this->header->html;
+        $footerHtml = $this->footer->html;
+        $headerCss = $this->header->css;
+        $footerCss = $this->footer->css;
+
+
+        $project = auth()->user()->projects()->create([
             'project_name' => $this->data['name'],
             'description' => $this->data['description'],
             'project_json' => $templateJson, // Use the template JSON for the new website
+            'header_embed' => $headerEmbedGlobal,
+            'footer_embed' => $footerEmbedGlobal,
+            'robots_txt' => $robotsTxt,
+            'favicon' => $favIcon,
         ]);
+
+
+
+        $sourcePath = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}/logo/{$this->template->favicon}";
+        if (File::exists($sourcePath)) {
+
+            $destinationPath = "/var/www/ezysite/public/storage/usersites/{$project->project_id}/logo/{$project->favicon}";
+            $result = $this->copyImage($sourcePath, $destinationPath);
+            if ($result === 'danger') {
+                Notification::make()
+                    ->danger()
+                    ->title('Favicon not found')
+                    ->send();
+            }
+        }else{
+            Notification::make()
+                ->danger()
+                ->title('Favicon not found')
+                ->send();
+        }
+
+
+
+
+        // Create header and footer entries and link them to the project
+        $header = HeaderFooter::create([
+            'website_id' => $project->project_id,
+            'json' => $headerJson,
+            'html' => $headerHtml,
+            'css' => $headerCss,
+            'is_header' => true,
+        ]);
+
+        // Create header and footer entries and link them to the project
+        $footer = HeaderFooter::create([
+            'website_id' => $project->project_id,
+            'json' => $footerJson,
+            'html' => $footerHtml,
+            'css' => $footerCss,
+            'is_header' => false,
+        ]);
+
+
+        foreach ($this->pages as $page) {
+            $pageCreated = WebPage::create([
+                'page_id' => $page['page_id'],
+                'name' => $page['name'],
+                'slug' => $page['slug'],
+                'title' => $page['title'],
+                'meta_description' => $page['meta_description'],
+                'main' => $page['main'],
+                'og' => $page['og'],
+                'embed_code_start' => $page['embed_code_start'],
+                'embed_code_end' => $page['embed_code_end'],
+                'html' => $page['html'],
+                'css' => $page['css'],
+                'website_id' => $project->project_id, // Associate the page with the project
+            ]);
+        }
 
         Notification::make()
             ->success()
@@ -109,8 +238,10 @@ new class extends Component implements HasForms {
 
                 <!-- Template Image -->
                 <div class="text-center mb-6">
-                    <img src="{{ asset('storage/templates_ss/screenshots/' . $template->template_id . '.png') }}"
-                        alt="{{ $template->template_name }}" class="rounded-md shadow" />
+                    @if ($this->template->ss)
+                    <img src="{{ asset('storage/templates/' . $template->template_id . '/screenshot/' . $template->ss) }}"
+                    alt="{{ $template->template_name }}" class="rounded-md shadow" />
+                    @endif
                 </div>
 
                 <!-- Create Website Form -->

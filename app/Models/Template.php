@@ -27,6 +27,8 @@ class Template extends Model
         'robots_txt',
         'header_embed',
         'footer_embed',
+        'is_publish',
+        'ss',
         // Add other columns that may exist in your templates table
     ];
 

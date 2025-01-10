@@ -31,6 +31,11 @@ new class extends Component implements HasForms {
 
     public function mount(): void
     {
+
+        if (!Gate::allows('create-template')) {
+            abort(404);
+        }
+        
         // Initialize form state
         $this->form->fill();
     }
@@ -151,7 +156,7 @@ new class extends Component implements HasForms {
                         Textarea::make('og') // OG (Open Graph) data
                             ->label('OG Tags')
                             ->rows(6)
-                            ->placeholder('<meta property="og:image" content="image_url">'),
+                            ->placeholder('Enter OG Tags'),
 
                         Textarea::make('page_html') // HTML content for the page
                             ->label('Page HTML')
@@ -168,13 +173,11 @@ new class extends Component implements HasForms {
                         Textarea::make('page_header_embed_code') // Header embed code (e.g., for scripts, styles)
                             ->label('Header Embed Code')
                             ->rows(6)
-                            ->required()
                             ->placeholder('Enter HTML or JavaScript for the page header'),
 
                         Textarea::make('page_footer_embed_code') // Footer embed code (e.g., for scripts, styles)
                             ->label('Footer Embed Code')
                             ->rows(6)
-                            ->required()
                             ->placeholder('Enter HTML or JavaScript for the page footer'),
                         Checkbox::make('is_main_page') // Checkbox for marking the page as main
                             ->label('Mark as Main Page')
@@ -373,7 +376,7 @@ new class extends Component implements HasForms {
 
                     <div class="flex justify-end gap-x-3">
                         <x-button tag="a" href="/templates/starter" color="secondary">Cancel</x-button>
-                        <x-button type="submit" class="text-white bg-primary-600 hover:bg-primary-500">
+                        <x-button type="button" wire:click="create" class="text-white bg-primary-600 hover:bg-primary-500">
                             Create Template
                         </x-button>
                     </div>

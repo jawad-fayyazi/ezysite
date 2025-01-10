@@ -87,9 +87,9 @@ new class extends Component implements HasForms {
                 'page_name' => $page->name,
                 'page_title' => $page->title,
                 'meta_description' => $page->meta_description,
-                'og_tags' => $page->og_tags,
-                'header_embed_code' => $page->header_embed_code,
-                'footer_embed_code' => $page->footer_embed_code,
+                'og_tags' => $page->og,
+                'header_embed_code' => $page->embed_code_start,
+                'footer_embed_code' => $page->embed_code_end,
                 'page_slug' => $page->slug,
             ];
         }
@@ -763,9 +763,9 @@ $newProject->save();
             $title = $page->title;
             $slug = $page->slug;
             $metaDescription = $page->meta_description ?? '';
-            $ogTags = $page->og_tags ?? '';
-            $headerEmbed = $page->header_embed_code ?? '';
-            $footerEmbed = $page->footer_embed_code ?? '';
+            $ogTags = $page->og ?? '';
+            $headerEmbed = $page->embed_code_start ?? '';
+            $footerEmbed = $page->embed_code_end ?? '';
             $pageSlug = $page->main ? 'index' : $slug;
 
 
@@ -1178,9 +1178,9 @@ $newProject->save();
             $title = $page->title;
             $slug = $page->slug;
             $metaDescription = $page->meta_description ?? '';
-            $ogTags = $page->og_tags ?? '';
-            $headerEmbed = $page->header_embed_code ?? '';
-            $footerEmbed = $page->footer_embed_code ?? '';
+            $ogTags = $page->og ?? '';
+            $headerEmbed = $page->embed_code_start ?? '';
+            $footerEmbed = $page->embed_code_end ?? '';
             $pageSlug = $page->main ? 'index' : $slug;
 
 

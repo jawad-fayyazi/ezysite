@@ -144,23 +144,19 @@ new class extends Component implements HasForms {
         ]);
 
 
+        if ($this->template->favicon){
+            $sourcePath = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}/logo/{$this->template->favicon}";
+            if (File::exists($sourcePath)) {
 
-        $sourcePath = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}/logo/{$this->template->favicon}";
-        if (File::exists($sourcePath)) {
-
-            $destinationPath = "/var/www/ezysite/public/storage/usersites/{$project->project_id}/logo/{$project->favicon}";
-            $result = $this->copyImage($sourcePath, $destinationPath);
-            if ($result === 'danger') {
-                Notification::make()
-                    ->danger()
-                    ->title('Favicon not found')
-                    ->send();
+                $destinationPath = "/var/www/ezysite/public/storage/usersites/{$project->project_id}/logo/{$project->favicon}";
+                $result = $this->copyImage($sourcePath, $destinationPath);
+                if ($result === 'danger') {
+                    Notification::make()
+                        ->danger()
+                        ->title('Favicon not found')
+                        ->send();
+                }
             }
-        }else{
-            Notification::make()
-                ->danger()
-                ->title('Favicon not found')
-                ->send();
         }
 
 

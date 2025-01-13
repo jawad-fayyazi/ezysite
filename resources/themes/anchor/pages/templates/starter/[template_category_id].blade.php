@@ -29,6 +29,7 @@ new class extends Component {
 
         // Fetch templates based on the category ID (template_category_id)
         $this->templates = Template::where('template_category_id', $this->template_category_id)
+            ->where('is_publish', true)  // Added condition for is_publish
             ->orderBy('template_id', 'desc')
             ->get();
     }

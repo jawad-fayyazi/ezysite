@@ -146,13 +146,11 @@ new class extends Component implements HasForms {
 
                 Textarea::make('description')
                     ->label('Description')
-                    ->required()
                     ->maxLength(1000),
 
                 FileUpload::make('template_image')
                     ->label('Template Screenshot')
                     ->image()
-                    ->required()
                     ->directory('templates_ss/screenshots')
                     ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png',])
                     ->maxSize(1024)
@@ -160,12 +158,10 @@ new class extends Component implements HasForms {
 
                 TextInput::make('preview_link')
                     ->label('Preview Link')
-                    ->required()
                     ->url(),
 
                 Textarea::make('template_json')
                     ->label('Template JSON')
-                    ->required()
                     ->rows(10)
                     ->placeholder('Add your template JSON structure here'),
 
@@ -219,23 +215,50 @@ new class extends Component implements HasForms {
 
 
         // Determine the category: Use new category if provided, otherwise use selected category
-        $categoryId = $this->data['new_category'] ? TemplateCategory::create(['name' => $this->data['new_category']])->id : $this->data['template_category'];
+        $this->data['new_category'] = $this->data['new_category'] ? TemplateCategory::create(['name' => $this->data['new_category']])->id : $this->data['template_category'];
 
-        // If both are empty, set a default category or handle the error
-        if (!$categoryId) {
+        $validator = Validator::make($this->data, [
+            'template_name' => 'required|string|max:255',
+            'new_category' => 'required|integer',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+
+
+
+        if ($validator->fails()) {
+            // Initialize an error message
+            $errorMessage = '';
+
+            // Check for specific errors
+            if ($validator->errors()->has('template_name')) {
+                $errorMessage .= 'Name is required and must not exceed 255 characters. ';
+            }
+
+            if ($validator->errors()->has('new_category')) {
+                $errorMessage .= 'Category is required and must not exceed 255 characters. ';
+            }
+
+            if ($validator->errors()->has('description')) {
+                $errorMessage .= 'Description must not exceed 1000 characters. ';
+            }
+
+            // Send the error notification
             Notification::make()
                 ->danger()
-                ->title('Category Error')
-                ->body('You must provide either an existing or a new category.')
+                ->title('Validation Error')
+                ->body($errorMessage)
                 ->send();
-            return;
+
+            return; // Stop further execution
         }
+
 
 
         // Create a new template entry
         $this->template->update([
             'template_name' => $this->data['template_name'],
-            'template_category_id' => $categoryId,
+            'template_category_id' => $this->data['new_category'],
             'template_description' => $this->data['description'],
             'template_preview_link' => $this->data['preview_link'],
             'template_json' => json_encode($this->data['template_json']),
@@ -638,7 +661,7 @@ new class extends Component implements HasForms {
 
                                 <!-- Delete Website -->
                                 <a href="#" wire:click="delete"
-                                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center" wire:confirm="Are you sure you want to delete this website?">
+                                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center" wire:confirm="Are you sure you want to delete this template?">
                                     <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Template
                                 </a>
                             </x-dropdown>
@@ -930,15 +953,6 @@ new class extends Component implements HasForms {
 
                     </div>
                 </div>
-
-
-
-
-
-
-
-
-
                                 <!-- header adn footer Box -->
                                 <div x-show="activeTab === 'header-footer'" x-transition:enter="transition ease-out duration-300"
                                     x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100"

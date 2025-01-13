@@ -2,6 +2,7 @@
 
 use Livewire\Volt\Component;
 use App\Models\Template;
+use Filament\Notifications\Notification;
 use App\Models\TemplateCategory; // Include TemplateCategory model
 use function Laravel\Folio\{middleware, name};
 
@@ -10,28 +11,64 @@ name('templates.category'); // Name the route
 
 new class extends Component {
     public $template_category_id; // Category ID from URL
-    public $category_name; // Category name 
     public $templates; // Templates in the category
+    public $category;
 
     public function mount($template_category_id): void
     {
         $this->template_category_id = $template_category_id; // Get the category name dynamically from the URL
         // Fetch templates based on the category
         // Fetch the category name based on the ID
-        $category = TemplateCategory::find($this->template_category_id);
+        $this->category = TemplateCategory::find($this->template_category_id);
 
         // Check if the category exists
-        if (!$category) {
+        if (!$this->category) {
             abort(404); // If no category found, return 404
         }
 
-        $this->category_name = $category->name; // Set the category name for display
+        // Check if the user is an admin
+        if (Gate::allows('create-template')) {
+            // Admins can view all templates in the category
+            $this->templates = Template::where('template_category_id', $this->template_category_id)
+                ->orderBy('template_id', 'desc')
+                ->get();
+        } else {
+            // Regular users can only view published templates
+            $this->templates = Template::where('template_category_id', $this->template_category_id)
+                ->where('is_publish', true)
+                ->orderBy('template_id', 'desc')
+                ->get();
+        }
+    }
 
-        // Fetch templates based on the category ID (template_category_id)
-        $this->templates = Template::where('template_category_id', $this->template_category_id)
-            ->where('is_publish', true)  // Added condition for is_publish
-            ->orderBy('template_id', 'desc')
-            ->get();
+
+
+    public function delete()
+    {
+        if(!Gate::allows('create-template')){
+            abort(404);
+        }
+
+        if ($this->category) {
+            // Perform deletion
+            $this->category->delete();
+
+
+
+            Notification::make()
+                ->success()
+                ->title('Category deleted successfully.')
+                ->send();
+            $this->redirect('/templates/starter');
+
+        } else {
+            Notification::make()
+                ->danger()
+                ->title('Category not found.')
+                ->send();
+            $this->redirect('/templates/starter');
+
+        }
     }
 };
 ?>
@@ -44,21 +81,24 @@ new class extends Component {
             <div class="bg-white p-6 rounded-lg shadow-lg">            
             <!-- Page Header -->
             <div class="flex items-center justify-between mb-5">
-                <x-app.heading title="Starter Templates in {{ ucwords($category_name) }}"
-                    description="Browse all starter templates in the {{ ucwords($category_name) }} category." :border="false" />
+                <x-app.heading title="Starter Templates in {{ $this->category->name }}"
+                    description="Browse all starter templates in the {{ $this->category->name }} category." :border="false" />
+                    <div class="flex justify-end gap-x-3">
 @if(Gate::allows('create-template')) <!-- Check if the user can create a template -->
     <x-button tag="a" :href="route('templates.create')">New Template</x-button>
+    <x-button tag="button" wire:click="delete" wire:confirm="Are you sure you want to delete this category?" color="danger">Delete this category</x-button>
 @else
     <x-button tag="a" :href="route('websites.create')">New Website</x-button>
 @endif
+                    </div>
             </div>
             <!-- Check if there are no templates -->
-            @if($templates->isEmpty())
-                <p class="text-gray-600">Looks like there are no Starter Templates in the "{{ ucwords($category_name) }}" category.</p>
+            @if($this->templates->isEmpty())
+                <p class="text-gray-600">Looks like there are no Starter Templates in the "{{ $this->category->name }}" category.</p>
             @else
                             <!-- Templates Grid -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                            @foreach($templates as $template)
+                            @foreach($this->templates as $template)
                                                 <div class="relative block bg-gray-100 p-4 rounded-lg shadow transition-all duration-300"
                                                     style="transform: scale(1); transition: transform 0.3s, box-shadow 0.3s;"
                                                     onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0px 4px 20px rgba(0, 0, 0, 0.2)';"
@@ -89,7 +129,7 @@ new class extends Component {
                                                             Preview
                                                         </x-button>
                                                         @if(Gate::allows('create-template')) <!-- Check if the user can create a template -->
-                                <x-button tag="a" href="/templates/starter/edit/{{$template->template_id}}">Edit Template</x-button>
+                                <x-button color="secondary" tag="a" href="/templates/starter/edit/{{$template->template_id}}">Edit Template</x-button>
                                 @endif
 
                                                     </div>

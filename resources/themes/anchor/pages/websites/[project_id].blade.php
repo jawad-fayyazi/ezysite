@@ -13,6 +13,9 @@ use Illuminate\Support\Str;
 use App\Models\Project;
 use App\Models\HeaderFooter;
 use App\Models\PrivateTemplate;
+use App\Models\Template;
+use App\Models\TemplateHeaderFooter;
+use App\Models\TempPage;
 use App\Models\Subdomain;
 use App\Models\WebPage; // Assuming you have the WebPage model
 use function Laravel\Folio\{middleware, name};
@@ -222,6 +225,54 @@ new class extends Component implements HasForms {
 
         $this->redirect('/templates/my'); // Redirect to the user's private templates page
     }
+
+
+
+
+        public function saveAsPublicTemplate(): void
+    {
+
+        if(!Gate::allows('create-template')){
+
+            abort(404);
+        }
+
+        // Check if template JSON is missing or invalid
+        $templateJson = json_decode($this->template->template_json, true);
+        // Check if header JSON is missing or invalid
+        $headerJson = json_decode($this->header->json, true);
+        $footerJson = json_decode($this->footer->json, true);
+
+        $robotsTxt = $this->template->robots_txt;
+        $headerEmbedGlobal = $this->template->header_embed;
+        $footerEmbedGlobal = $this->template->footer_embed;
+        $favIcon = $this->template->favicon;
+
+        $headerHtml = $this->header->html;
+        $footerHtml = $this->footer->html;
+        $headerCss = $this->header->css;
+        $footerCss = $this->footer->css;
+
+
+
+
+        // Create a new private template based on the project
+        Template::create([
+            'template_name' => $this->project->project_name . ' - Public Template',
+            'description' => $this->project->description,
+            'template_json' => $this->project->project_json,
+            'user_id' => auth()->id(), // Associate with the logged-in user
+        ]);
+
+        Notification::make()
+            ->success()
+            ->title('Template created successfully')
+            ->send();
+
+        $this->redirect('/templates/my'); // Redirect to the user's private templates page
+    }
+
+
 
 
     // Edit the project details
@@ -891,7 +942,6 @@ $newProject->save();
 
 
     public function liveWebsite() {
-        $preview = $this->isPreview;
         // Access liveData array
         $domain = $this->liveData['domain'];
         $pages = $this->liveData['pages']; // Selected pages array
@@ -948,6 +998,39 @@ $newProject->save();
             }
         }
 
+
+
+
+
+    $mainPageExists = false; // Initialize a flag for the main page
+
+    // Iterate through the selected pages to check if the main page is included
+    foreach ($pages as $pageId) {
+        $page = WebPage::find($pageId); // Replace `Page` with your actual model name
+        if ($page && $page->main) {
+            $mainPageExists = true; // Set the flag if the main page is found
+            break; // Exit the loop early since we found the main page
+        }
+    }
+
+    // If no main page is found, handle the error
+    if (!$mainPageExists) {
+        if ($this->shouldRedirect) {
+            Notification::make()
+                ->danger()
+                ->title('No Main Page')
+                ->body('You must select a main page for your website to live.')
+                ->send();
+
+            return redirect('/websites' . '/' . $this->project->project_id);
+        } else {
+            return [
+                'status' => 'danger',
+                'title' => 'No Main Page',
+                "body" => 'You must select a main page for your website to live.',
+            ];
+        }
+    }
 
 
         if(!$this->mainPage){
@@ -1923,6 +2006,14 @@ HTML;
                                     <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as My Template
                                 </a>
 
+                                @if(Gate::allows('create-template'))
+                                <!-- Save as Public Template -->
+                                <a href="#" wire:click="saveAsPublicTemplate"
+                                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+                                    <x-icon name="phosphor-star" class="w-4 h-4 mr-2" /> Save as Public Template
+                                </a>
+                                @endif
+
                                 <!-- Delete Website -->
                                 <a href="#" wire:click="delete"
                                     class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center" wire:confirm="Are you sure you want to delete this website?">
@@ -2203,7 +2294,7 @@ HTML;
                     <div x-data="{ open: false }" class="grid gap-y-2">
                         <div class="flex justify-between items-center">
                                 <div @click="open = !open" class="cursor-pointer text-md font-semibold w-full flex justify-between">
-                                    <span>Advance Settings</span>
+                                    <span>Advanced Settings</span>
                                     <!-- Arrow Icon for Collapsible -->
                                     <svg x-bind:class="open ? 'transform rotate-180' : ''" class="w-5 h-5 transition-transform duration-300" fill="none"
                                         stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -2215,11 +2306,22 @@ HTML;
                         <div x-show="open" x-transition.duration.300ms x-cloak class="mt-4 space-y-3 bg-white-100 p-4 rounded-lg rounded-md shadow-md">
                         <!-- Pages Selection -->
                         <div class="grid gap-y-2">
-                            <label class="block text-sm font-semibold">Select Pages</label>
+                            <label class="fi-fo-field-wrp-label inline-flex items-center gap-x-3"><span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                Select Pages
+                            </span>
+                            </label>
                             @foreach($pages as $page)
                                 <div class="flex items-center mb-2">
-                                    <input type="checkbox" wire:model="liveData.pages" value="{{ $page->id }}" class="mr-2">
-                                    <label for="pages[]" class="text-sm">{{ $page->name }}</label>
+                                    <label for="{{$page->id}}" class="text-sm">
+                                    <input type="checkbox" wire:model="liveData.pages" value="{{ $page->id }}" class="fi-checkbox-input rounded border-none bg-white shadow-sm ring-1 transition duration-75 checked:ring-0 focus:ring-2 focus:ring-offset-0 disabled:pointer-events-none disabled:bg-gray-50 disabled:text-gray-50 disabled:checked:bg-current disabled:checked:text-gray-400 dark:bg-white/5 dark:disabled:bg-transparent dark:disabled:checked:bg-gray-600 text-primary-600 ring-gray-950/10 focus:ring-primary-600 checked:focus:ring-primary-500/50 dark:text-primary-500 dark:ring-white/20 dark:checked:bg-primary-500 dark:focus:ring-primary-500 dark:checked:focus:ring-primary-400/50 dark:disabled:ring-white/10"
+                                    wire:loading.attr="disabled"
+                                    id="{{$page->id}}"
+                                    @if($page->main) checked disabled @endif>
+                                    <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">{{ $page->name }}</span>
+                                        @if($page->main)
+                    <span class="text-gray-500 text-xs">(Main Page)</span>
+                @endif
+                                    </label>
                                 </div>
                             @endforeach
                             @error('liveData.pages')
@@ -2228,22 +2330,41 @@ HTML;
                         </div>
                     
                         <!-- Header Option -->
-                        <div class="grid gap-y-2">
-                            <label class="block text-sm font-semibold">Include Header</label>
-                            <input type="checkbox" wire:model="liveData.header" class="mr-2">
+                    <div class="grid gap-y-2">
+                            <label class="fi-fo-field-wrp-label inline-flex items-center gap-x-3">
+                                <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">Select Header & Footer</span>
+                            </label>
+
+                            <div class="flex items-center mb-2">
+                                <label for="header" class="fi-fo-field-wrp-label inline-flex items-center gap-x-3">
+                            <input
+                            id="header"
+                            wire:loading.attr="disabled" 
+                            type="checkbox" wire:model="liveData.header" class="fi-checkbox-input rounded border-none bg-white shadow-sm ring-1 transition duration-75 checked:ring-0 focus:ring-2 focus:ring-offset-0 disabled:pointer-events-none disabled:bg-gray-50 disabled:text-gray-50 disabled:checked:bg-current disabled:checked:text-gray-400 dark:bg-white/5 dark:disabled:bg-transparent dark:disabled:checked:bg-gray-600 text-primary-600 ring-gray-950/10 focus:ring-primary-600 checked:focus:ring-primary-500/50 dark:text-primary-500 dark:ring-white/20 dark:checked:bg-primary-500 dark:focus:ring-primary-500 dark:checked:focus:ring-primary-400/50 dark:disabled:ring-white/10">
+                                <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">Include Header</span>
+                            </label>
+                            
                             @error('liveData.header')
                                 <div class="text-red-600 text-sm">{{ $message }}</div>
                             @enderror
+                            
                         </div>
                     
+
+                        <div class="flex items-center mb-2">
                         <!-- Footer Option -->
-                        <div class="grid gap-y-2">
-                            <label class="block text-sm font-semibold">Include Footer</label>
-                            <input type="checkbox" wire:model="liveData.footer" class="mr-2">
+                            <label for="footer" class="fi-fo-field-wrp-label inline-flex items-center gap-x-3">
+                            <input
+                            id="footer"
+                            wire:loading.attr="disabled"
+                            type="checkbox" wire:model="liveData.footer" 
+                            class="fi-checkbox-input rounded border-none bg-white shadow-sm ring-1 transition duration-75 checked:ring-0 focus:ring-2 focus:ring-offset-0 disabled:pointer-events-none disabled:bg-gray-50 disabled:text-gray-50 disabled:checked:bg-current disabled:checked:text-gray-400 dark:bg-white/5 dark:disabled:bg-transparent dark:disabled:checked:bg-gray-600 text-primary-600 ring-gray-950/10 focus:ring-primary-600 checked:focus:ring-primary-500/50 dark:text-primary-500 dark:ring-white/20 dark:checked:bg-primary-500 dark:focus:ring-primary-500 dark:checked:focus:ring-primary-400/50 dark:disabled:ring-white/10">
+                                <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">Include Footer</span></label>
                             @error('liveData.footer')
                                 <div class="text-red-600 text-sm">{{ $message }}</div>
                             @enderror
                         </div>
+                    </div>
                         </div>
                     </div>
                 

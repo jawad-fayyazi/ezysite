@@ -147,7 +147,7 @@ new class extends Component implements HasForms {
             'page_id' => '',
             'name' => 'Page 1', // Page name is based on the current page count
             'slug' => 'page-1',
-            'title' => 'page 1',
+            'title' => 'page 1 - ' . $this->template->template_name,
             'meta_description' => '',
             'template_id' => $this->template->template_id,
             'html' => '',

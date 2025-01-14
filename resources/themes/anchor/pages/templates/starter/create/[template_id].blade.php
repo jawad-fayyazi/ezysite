@@ -119,19 +119,69 @@ new class extends Component implements HasForms {
             return;
         }
 
-        $templateJson = json_decode($this->template->template_json, true);
         $robotsTxt = $this->template->robots_txt;
         $headerEmbedGlobal = $this->template->header_embed;
         $footerEmbedGlobal = $this->template->footer_embed;
         $favIcon = $this->template->favicon;
 
-        $headerJson = json_decode($this->header->json, true);
-        $footerJson = json_decode($this->footer->json, true);
         $headerHtml = $this->header->html;
         $footerHtml = $this->footer->html;
         $headerCss = $this->header->css;
         $footerCss = $this->footer->css;
 
+
+        // Check if template JSON is missing or invalid
+        $templateJson = json_decode($this->template->template_json, true);
+        if ($templateJson === null) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body('Template JSON data is missing or invalid.')
+                ->send();
+            return;
+        }
+
+        // Check if header JSON is missing or invalid
+        $headerJson = json_decode($this->header->json, true);
+        if ($headerJson === null) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body('Header JSON data is missing or invalid.')
+                ->send();
+            return;
+        }
+
+        // Check if footer JSON is missing or invalid
+        $footerJson = json_decode($this->footer->json, true);
+        if ($footerJson === null) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body('Footer JSON data is missing or invalid.')
+                ->send();
+            return;
+        }
+
+        // Check if the name is missing
+        if (empty($this->data['name'])) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body('Website name is required.')
+                ->send();
+            return;
+        }
+
+        // Check if pages data is missing or invalid
+        if (empty($this->pages)) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body('Pages data is missing.')
+                ->send();
+            return;
+        }
 
         $project = auth()->user()->projects()->create([
             'project_name' => $this->data['name'],

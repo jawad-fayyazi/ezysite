@@ -22,13 +22,14 @@ class Template extends Model
         'template_description',
         'template_json',
         'template_image',
-        'template_preview_link',
+        'live',
         'favicon',
         'robots_txt',
         'header_embed',
         'footer_embed',
         'is_publish',
         'ss',
+        'domain',
         // Add other columns that may exist in your templates table
     ];
 

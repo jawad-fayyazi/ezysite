@@ -37,6 +37,7 @@ new class extends Component implements HasForms {
     public $ourDomain = ".template.wpengineers.com";
     public $shouldRedirect = true; // Flag to control redirection
     public $liveData = [];
+    public $categoryName;
 
 
 
@@ -57,7 +58,7 @@ new class extends Component implements HasForms {
             'header_embed' => $this->template->header_embed, // Add embed code for header
             'footer_embed' => $this->template->footer_embed, // Add embed code for footer
             'preview_link' => $this->template->template_preview_link, // Add robots.txt field
-            'template_json' => json_decode($this->template->template_json), // Add robots.txt field
+            'template_json' => $this->template->template_json, // Add robots.txt field
             'is_publish' => $this->template->is_publish, // Add robots.txt field
 
         ]);
@@ -110,10 +111,10 @@ new class extends Component implements HasForms {
 
         // Pre-fill the form with existing data
         $this->hfData = [
-            'header_json' => json_decode($this->header->json),
+            'header_json' => $this->header->json,
             'header_html' => $this->header->html,
             'header_css' => $this->header->css,
-            'footer_json' => json_decode($this->footer->json),
+            'footer_json' => $this->footer->json,
             'footer_html' => $this->footer->html,
             'footer_css' => $this->footer->css,
         ];
@@ -130,6 +131,10 @@ new class extends Component implements HasForms {
         ];
 
         $this->liveData['pages'] = $this->pages->pluck('id')->toArray(); // Populate with all page IDs
+
+        $this->categoryName = TemplateCategory::find($this->template->template_category_id)->name;
+
+
     }
 
 
@@ -280,7 +285,7 @@ new class extends Component implements HasForms {
             'template_category_id' => $this->data['new_category'],
             'template_description' => $this->data['description'],
             'template_preview_link' => $this->data['preview_link'],
-            'template_json' => json_encode($this->data['template_json']),
+            'template_json' => $this->data['template_json'],
             'robots_txt' => $this->data['robots_txt'],
             'header_embed' => $this->data['header_embed'],
             'footer_embed' => $this->data['footer_embed'],
@@ -524,7 +529,7 @@ new class extends Component implements HasForms {
     public function headerUpdate(){
 
         $this->header->update([
-                'json' => json_encode($this->hfData['header_json']),
+                'json' => $this->hfData['header_json'],
                 'html' => $this->hfData['header_html'],
                 'css' => $this->hfData['header_css'],
             ]);
@@ -536,7 +541,7 @@ new class extends Component implements HasForms {
     {
 
         $this->footer->update([
-                'json' => json_encode($this->hfData['footer_json']),
+                'json' => $this->hfData['footer_json'],
                 'html' => $this->hfData['footer_html'],
                 'css' => $this->hfData['footer_css'],
             ]);
@@ -1463,7 +1468,7 @@ HTML;
         <div class="container mx-auto my-6">
 
             <!-- Back Button -->
-            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to {{ $this->template->template_category }}"
+            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to {{ $this->categoryName }}"
                 href="/templates/starter/{{$this->template->template_category_id}}" />
 
             <!-- Template Details Box -->
@@ -1506,7 +1511,7 @@ HTML;
                 
                 <!-- Live Status Indicator -->
                 <div class="flex items-center">
-                    <span class="text-sm font-medium mr-2">Status:</span>
+                    <span class="text-sm font-medium mr-2">Live Status:</span>
                     @if($this->template->live)
                     <span class="text-green-500">Live</span>
                     @else
@@ -1523,11 +1528,11 @@ HTML;
 
                                 <!-- Public Status Indicator -->
                 <div class="flex items-center">
-                    <span class="text-sm font-medium mr-2">Status:</span>
+                    <span class="text-sm font-medium mr-2">Publish Status:</span>
                     @if($this->template->is_publish)
-                    <span class="text-green-500">Publish</span>
+                    <span class="text-green-500">Published</span>
                     @else
-                    <span class="text-red-500">Not Publish</span>
+                    <span class="text-red-500">Not Published</span>
                     @endif
                 </div>
             </div>
@@ -1902,7 +1907,7 @@ HTML;
                                 @endif
 
                                 <!-- Delete Website -->
-                                <a href="#" wire:click="deletePage({{ $page->id }})"
+                                <a href="#" wire:confirm="Are you sure you want to delete this page?" wire:click="deletePage({{ $page->id }})"
                                     class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center">
                                     <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Page
                                 </a>

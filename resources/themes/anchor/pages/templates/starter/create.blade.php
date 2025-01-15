@@ -135,7 +135,7 @@ new class extends Component implements HasForms {
             'template_category_id' => $this->data['new_category'], // Required
             'template_description' => $this->data['description'] ?? '', // Default to empty string if not set
             'template_preview_link' => '', // Set to empty string
-            'template_json' => json_encode([]), // Correctly encodes an empty JSON object
+            'template_json' => '', // Correctly encodes an empty JSON object
             'robots_txt' => '', // Set to empty string
             'header_embed' => '', // Set to empty string
             'footer_embed' => '', // Set to empty string

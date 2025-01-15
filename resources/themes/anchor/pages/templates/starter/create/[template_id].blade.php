@@ -131,7 +131,7 @@ new class extends Component implements HasForms {
 
 
         // Check if template JSON is missing or invalid
-        $templateJson = json_decode($this->template->template_json, true);
+        $templateJson = $this->template->template_json;
         if ($templateJson === null) {
             Notification::make()
                 ->danger()
@@ -142,7 +142,7 @@ new class extends Component implements HasForms {
         }
 
         // Check if header JSON is missing or invalid
-        $headerJson = json_decode($this->header->json, true);
+        $headerJson = $this->header->json;
         if ($headerJson === null) {
             Notification::make()
                 ->danger()
@@ -153,7 +153,7 @@ new class extends Component implements HasForms {
         }
 
         // Check if footer JSON is missing or invalid
-        $footerJson = json_decode($this->footer->json, true);
+        $footerJson = $this->footer->json;
         if ($footerJson === null) {
             Notification::make()
                 ->danger()
@@ -182,6 +182,111 @@ new class extends Component implements HasForms {
                 ->send();
             return;
         }
+
+        // Validate Header HTML
+        if (empty($this->header->html) || !is_string($this->header->html)) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body("Header HTML data is missing or invalid.")
+                ->send();
+            return;
+        }
+
+        // Validate Footer HTML
+        if (empty($this->footer->html) || !is_string($this->footer->html)) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body("Footer HTML data is missing or invalid.")
+                ->send();
+            return;
+        }
+
+        // Validate Header CSS
+        if (empty($this->header->css) || !is_string($this->header->css)) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body("Header CSS data is missing or invalid.")
+                ->send();
+            return;
+        }
+
+        // Validate Footer CSS
+        if (empty($this->footer->css) || !is_string($this->footer->css)) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body("Footer CSS data is missing or invalid.")
+                ->send();
+            return;
+        }
+
+
+
+        foreach ($this->pages as $page) {
+            // Validate 'name' field
+            if (empty($page['name'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'name' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'page_id' field
+            if (is_null($page['page_id'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'page_id' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'slug' field
+            if (empty($page['slug']) || !is_string($page['slug'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'slug' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'title' field
+            if (empty($page['title']) || !is_string($page['title'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'title' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'html' field
+            if (empty($page['html']) || !is_string($page['html'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'html' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'css' field
+            if (empty($page['css']) || !is_string($page['css'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'css' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+        }
+
 
         $project = auth()->user()->projects()->create([
             'project_name' => $this->data['name'],
@@ -232,6 +337,15 @@ new class extends Component implements HasForms {
 
 
         foreach ($this->pages as $page) {
+
+            if (empty($page['name'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page's data is missing or invalid.")
+                    ->send();
+                return;
+            }
             $pageCreated = WebPage::create([
                 'page_id' => $page['page_id'],
                 'name' => $page['name'],

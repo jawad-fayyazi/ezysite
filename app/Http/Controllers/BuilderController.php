@@ -74,15 +74,7 @@ class BuilderController extends Controller
             ], 400); // Bad request
         }
 
-        // Validate the JSON data (you could add custom validation if needed)
-        $project_json = json_decode($projects_data, true); // Decode to check if it's valid JSON
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid JSON data received.'
-            ], 400); // Bad request
-        }
+       
 
         // Check if the project exists in the database
         $projectData = Project::where('project_id', $project_id)->first();

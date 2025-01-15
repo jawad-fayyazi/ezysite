@@ -110,15 +110,17 @@ new class extends Component {
 
                                         <!-- Template Name -->
                                         <div class="flex items-center justify-center space-x-2 group"
-                                    title="{{ $template->publish ? 'Template is public' : 'Template is not public' }}">
+                                    @if(Gate::allows('create-template')) title="{{ $template->is_publish ? 'Template is public' : 'Template is not public' }}" @endif>
                                             @if($template->favicon)
                                                 <img src="{{ asset('storage/templates/' . $template->template_id . '/logo/' . $template->favicon) }}" alt="Website Favicon"
                                                     class="w-6 h-6 rounded-full">
                                             @endif
                                             <h3 class="text-lg font-bold text-gray-700">{{ $template->template_name }}</h3>
-                                             <span class="w-3 h-3 rounded-full 
-                                            {{ $template->publish ? 'bg-green-500' : 'bg-red-500' }}" style="display: inline-block;">
-                                    </span>
+                                            @if(Gate::allows('create-template'))
+                                            <span class="w-3 h-3 rounded-full 
+                                            {{ $template->is_publish ? 'bg-green-500' : 'bg-red-500' }}" style="display: inline-block;">
+                                            </span>
+                                            @endif
                                         </div>
 
                                         <!-- Template Image -->
@@ -135,11 +137,13 @@ new class extends Component {
                                         </p>
 
                                         <!-- Preview Button Inside Card (Separate from the Link) -->
-                                        <div class="mt-4 text-center">
+                                        <div class="mt-4 text-center space-x-2">
+                                            @if($template->live)
                                             <x-button tag="a" href="{{ 'https://' . $template->domain . $this->ourDomain}}" target="_blank" color="primary"
                                                 onclick="event.stopPropagation();">
                                                 Preview
                                             </x-button>
+                                            @endif
                                             @if(Gate::allows('create-template')) <!-- Check if the user can create a template -->
                     <x-button color="secondary" tag="a" href="/templates/starter/edit/{{$template->template_id}}">Edit Template</x-button>
                     @endif

@@ -16,6 +16,7 @@ use App\Models\PrivateTemplate;
 use App\Models\Template;
 use App\Models\TemplateHeaderFooter;
 use App\Models\TempPage;
+use App\Models\TemplateCategory; // Import TemplateCategory model
 use App\Models\Subdomain;
 use App\Models\WebPage; // Assuming you have the WebPage model
 use function Laravel\Folio\{middleware, name};
@@ -237,39 +238,189 @@ new class extends Component implements HasForms {
             abort(404);
         }
 
-        // Check if template JSON is missing or invalid
-        $templateJson = json_decode($this->template->template_json, true);
-        // Check if header JSON is missing or invalid
-        $headerJson = json_decode($this->header->json, true);
-        $footerJson = json_decode($this->footer->json, true);
+    $robotsTxt = $this->project->robots_txt;
+    $headerEmbedGlobal = $this->project->header_embed;
+    $footerEmbedGlobal = $this->project->footer_embed;
+    $favIcon = $this->project->favicon;
 
-        $robotsTxt = $this->template->robots_txt;
-        $headerEmbedGlobal = $this->template->header_embed;
-        $footerEmbedGlobal = $this->template->footer_embed;
-        $favIcon = $this->template->favicon;
-
-        $headerHtml = $this->header->html;
-        $footerHtml = $this->footer->html;
-        $headerCss = $this->header->css;
-        $footerCss = $this->footer->css;
+    $headerHtml = $this->header->html;
+    $footerHtml = $this->footer->html;
+    $headerCss = $this->header->css;
+    $footerCss = $this->footer->css;
+    $projectJson = $this->project->project_json;
+    $headerJson = $this->header->json;
+    $footerJson = $this->footer->json;
 
 
+        // Check if the name is missing
+    if (empty($this->project->project_name)) {
+        Notification::make()
+            ->danger()
+            ->title('Error')
+            ->body('Name is invalid or missing.')
+            ->send();
+        return;
+    }
+
+    // Check if pages data is missing or invalid
+    if (empty($this->pages)) {
+        Notification::make()
+            ->danger()
+            ->title('Error')
+            ->body('Pages are missing.')
+            ->send();
+        return;
+    }
+
+     foreach ($this->pages as $page) {
+            // Validate 'name' field
+            if (empty($page['name'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'name' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'page_id' field
+            if (is_null($page['page_id'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'page_id' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'slug' field
+            if (empty($page['slug']) || !is_string($page['slug'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'slug' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'title' field
+            if (empty($page['title']) || !is_string($page['title'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'title' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'html' field
+            if (empty($page['html']) || !is_string($page['html'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'html' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'css' field
+            if (empty($page['css']) || !is_string($page['css'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'css' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+        }
 
 
-        // Create a new private template based on the project
-        Template::create([
-            'template_name' => $this->project->project_name . ' - Public Template',
-            'description' => $this->project->description,
-            'template_json' => $this->project->project_json,
-            'user_id' => auth()->id(), // Associate with the logged-in user
+        // Check if the Template Category "From Websites" exists
+        $category = TemplateCategory::where('name', 'From Websites')->first();
+         // If category doesn't exist, create it
+        if (!$category) {
+            $category = TemplateCategory::create([
+                'name' => 'From Websites',
+                'description' => 'Templates created from websites.',
+            ]);
+        }
+
+        
+
+
+        $template = Template::create([
+        'template_name' => $this->project->project_name . ' (Public Template)',
+        'description' => $this->project->description,
+        'template_json' => $projectJson, // Use the project JSON for the new template
+        'header_embed' => $headerEmbedGlobal,
+        'footer_embed' => $footerEmbedGlobal,
+        'robots_txt' => $robotsTxt,
+        'favicon' => $favIcon,
+        'template_category_id' => $category->id, // Assign the category ID
+    ]);
+
+
+
+
+    if ($this->project->favicon) {
+        $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/logo/{$this->project->favicon}";
+        if (File::exists($sourcePath)) {
+            $destinationPath = "/var/www/ezysite/public/storage/templates/{$template->template_id}/logo/{$template->favicon}";
+            $result = $this->copyImage($sourcePath, $destinationPath);
+            if ($result === 'danger') {
+                Notification::make()
+                    ->danger()
+                    ->title('Favicon not found')
+                    ->send();
+            }
+        }
+    }
+
+
+    // Create header and footer entries and link them to the template
+    $header = TemplateHeaderFooter::create([
+        'template_id' => $template->template_id,
+        'json' => $headerJson,
+        'html' => $headerHtml,
+        'css' => $headerCss,
+        'is_header' => true,
+    ]);
+
+     $footer = TemplateHeaderFooter::create([
+        'template_id' => $template->template_id,
+        'json' => $footerJson,
+        'html' => $footerHtml,
+        'css' => $footerCss,
+        'is_header' => false,
+    ]);
+
+
+
+    foreach ($this->pages as $page) {
+        TempPage::create([
+            'page_id' => $page['page_id'],
+            'name' => $page['name'],
+            'slug' => $page['slug'],
+            'title' => $page['title'],
+            'meta_description' => $page['meta_description'],
+            'main' => $page['main'],
+            'og' => $page['og'],
+            'embed_code_start' => $page['embed_code_start'],
+            'embed_code_end' => $page['embed_code_end'],
+            'html' => $page['html'],
+            'css' => $page['css'],
+            'template_id' => $template->template_id, // Associate the page with the template
         ]);
+    }
+
+
 
         Notification::make()
             ->success()
-            ->title('Template created successfully')
+            ->title('Template created successfully from project')
             ->send();
 
-        $this->redirect('/templates/my'); // Redirect to the user's private templates page
+        $this->redirect('/templates/starter/' . $category->id . '/'); // Redirect to the user's private templates page
     }
 
 

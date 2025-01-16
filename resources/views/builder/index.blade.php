@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $project_name }}</title>
+    <title>{{ $project_name }} - Ezysite Builder</title>
 
     <!-- Include GrapesJS Styles -->
     <link href="{{ asset('builder/css/grapes.min.css') }}" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </div>
 
         <div id="side-bar-collpase" class="sidebar gjs-one-bg gjs-two-color">
-            <h1 class="project-name" id="test">{{ $project_name }}</h1> <!-- Display project name -->            
+            <h1 class="project-name" id="project-name">{{ $project_name }}</h1> <!-- Display project name -->            
             <div class="pages-collapse">
                 <i class="fa-solid fa-caret-down"></i> Pages
             </div>

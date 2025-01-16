@@ -69,6 +69,8 @@ Route::post('/pages/rename/{id}', [BuilderController::class, 'pageRename']);
 
 
 Route::post('/pages/data', [BuilderController::class, 'pageHtmlCss']);
+Route::post('/pages/all-data', [BuilderController::class, 'savePagesData']);
+
 
 
 // Route for editing header

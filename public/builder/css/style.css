@@ -373,7 +373,10 @@ body {
     }
 }
 
-
+.error-icon {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
 
 .active-dot {
     width: 8px;

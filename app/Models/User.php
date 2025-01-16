@@ -81,7 +81,13 @@ class User extends WaveUser
     {
         return $this->hasMany(PrivateTemplate::class); // User has many private templates
     }
-
-
+    public function privateTemplateHf()
+    {
+        return $this->hasMany(PrivateTemplatesHf::class);
+    }
+    public function privateTemplatePages()
+    {
+        return $this->hasMany(PrivateTempPages::class);
+    }
 
 }

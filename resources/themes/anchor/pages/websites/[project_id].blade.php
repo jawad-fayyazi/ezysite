@@ -13,6 +13,8 @@ use Illuminate\Support\Str;
 use App\Models\Project;
 use App\Models\HeaderFooter;
 use App\Models\PrivateTemplate;
+use App\Models\PrivateTemplateHf;
+use App\Models\PrivateTempPage;
 use App\Models\Template;
 use App\Models\TemplateHeaderFooter;
 use App\Models\TempPage;
@@ -211,14 +213,178 @@ new class extends Component implements HasForms {
     // Save project as a private template
     public function saveAsPrivateTemplate(): void
     {
+
+
+        $robotsTxt = $this->project->robots_txt;
+    $headerEmbedGlobal = $this->project->header_embed;
+    $footerEmbedGlobal = $this->project->footer_embed;
+    $favIcon = $this->project->favicon;
+
+    $headerHtml = $this->header->html;
+    $footerHtml = $this->footer->html;
+    $headerCss = $this->header->css;
+    $footerCss = $this->footer->css;
+    $projectJson = $this->project->project_json;
+    $headerJson = $this->header->json;
+    $footerJson = $this->footer->json;
+
+
+        // Check if the name is missing
+    if (empty($this->project->project_name)) {
+        Notification::make()
+            ->danger()
+            ->title('Error')
+            ->body('Name is invalid or missing.')
+            ->send();
+        return;
+    }
+
+    // Check if pages data is missing or invalid
+    if (empty($this->pages)) {
+        Notification::make()
+            ->danger()
+            ->title('Error')
+            ->body('Pages are missing.')
+            ->send();
+        return;
+    }
+
+     foreach ($this->pages as $page) {
+            // Validate 'name' field
+            if (empty($page['name'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'name' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'page_id' field
+            if (is_null($page['page_id'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'page_id' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'slug' field
+            if (empty($page['slug']) || !is_string($page['slug'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'slug' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'title' field
+            if (empty($page['title']) || !is_string($page['title'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'title' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'html' field
+            if (empty($page['html']) || !is_string($page['html'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'html' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+
+            // Validate 'css' field
+            if (empty($page['css']) || !is_string($page['css'])) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body("Template's Page 'css' field is missing or invalid.")
+                    ->send();
+                return;
+            }
+        }
+
+
+
         // Create a new private template based on the project
-        PrivateTemplate::create([
-            'template_name' => $this->project->project_name . ' - My Template',
+        $privateTemplate = PrivateTemplate::create([
+            'template_name' => $this->project->project_name . ' (My Template)',
             'description' => $this->project->description,
-            'template_json' => $this->project->project_json,
+            'template_json' => $projectJson, // Use the project JSON for the new template
+            'header_embed' => $headerEmbedGlobal,
+            'footer_embed' => $footerEmbedGlobal,
+            'robots_txt' => $robotsTxt,
+            'favicon' => $favIcon,
             'user_id' => auth()->id(), // Associate with the logged-in user
         ]);
 
+
+
+         if ($this->project->favicon) {
+        $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/logo/{$this->project->favicon}";
+        if (File::exists($sourcePath)) {
+            $destinationPath = "/var/www/ezysite/public/storage/private-templates/{$privateTemplate->id}/logo/{$privateTemplate->favicon}";
+            $result = $this->copyImage($sourcePath, $destinationPath);
+            if ($result === 'danger') {
+                Notification::make()
+                    ->danger()
+                    ->title('Favicon not found')
+                    ->send();
+            }
+        }
+    }
+
+
+    // Create header and footer entries and link them to the template
+    $header = PrivateTemplateHf::create([
+        'private_template_id' => $privateTemplate->id,
+        'json' => $headerJson,
+        'html' => $headerHtml,
+        'css' => $headerCss,
+        'is_header' => true,
+        'user_id' => auth()->id(),
+    ]);
+
+     $footer = PrivateTemplateHf::create([
+        'private_template_id' => $privateTemplate->id,
+        'json' => $footerJson,
+        'html' => $footerHtml,
+        'css' => $footerCss,
+        'is_header' => false,
+        'user_id' => auth()->id(),
+    ]);
+
+
+
+    foreach ($this->pages as $page) {
+        PrivateTempPage::create([
+            'page_id' => $page['page_id'],
+            'name' => $page['name'],
+            'slug' => $page['slug'],
+            'title' => $page['title'],
+            'meta_description' => $page['meta_description'],
+            'main' => $page['main'],
+            'og' => $page['og'],
+            'embed_code_start' => $page['embed_code_start'],
+            'embed_code_end' => $page['embed_code_end'],
+            'html' => $page['html'],
+            'css' => $page['css'],
+            'private_template_id' => $privateTemplate->id, // Associate the page with the template
+            'user_id' => auth()->id(),
+        ]);
+    }
+
+
+
+
+    
         Notification::make()
             ->success()
             ->title('Template created successfully')
@@ -474,7 +640,7 @@ new class extends Component implements HasForms {
 
         Notification::make()
             ->success()
-            ->title('Website updated successfully')
+            ->title('Website settings updated successfully')
             ->send();
 
         $this->redirect('/websites' . '/' . $this->project->project_id);

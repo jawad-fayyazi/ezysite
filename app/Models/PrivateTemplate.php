@@ -18,6 +18,10 @@ class PrivateTemplate extends Model
         'description',
         'template_json',
         'user_id', // The user ID who created the template
+        'favicon',
+        'robots_txt',
+        'header_embed',
+        'footer_embed',
     ];
 
     protected $casts = [

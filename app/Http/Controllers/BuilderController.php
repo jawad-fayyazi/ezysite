@@ -389,6 +389,57 @@ class BuilderController extends Controller
 
 
 
+
+
+    public function savePagesData(Request $request)
+    {
+        // Validate the incoming request
+        $validated = $request->validate([
+            'pages' => 'required|array',
+            'pages.*.pageId' => 'required|exists:web_pages,page_id',
+            'pages.*.html' => 'nullable|string',
+            'pages.*.css' => 'nullable|string',
+            'websiteId' => 'required|exists:projects_data,project_id',
+        ]);
+
+        
+        $websiteId = $validated['websiteId'];
+        $pagesData = $validated['pages'];
+
+        $updatedPages = [];
+        $failedPages = [];
+
+        foreach ($pagesData as $pageData) {
+            $page = WebPage::where('page_id', $pageData['pageId'])
+                ->where('website_id', $websiteId)
+                ->first();
+
+            if ($page) {
+                $page->html = $pageData['html'] ?? $page->html;
+                $page->css = $pageData['css'] ?? $page->css;
+
+                if ($page->save()) {
+                    $updatedPages[] = $pageData['pageId'];
+                } else {
+                    $failedPages[] = $pageData['pageId'];
+                }
+            } else {
+                $failedPages[] = $pageData['pageId'];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'updatedPages' => $updatedPages,
+            'failedPages' => $failedPages,
+            'message' => count($failedPages) > 0
+                ? 'Some pages could not be updated.'
+                : 'All pages updated successfully!',
+        ]);
+    }
+
+
+
     public function headerEdit($project_id)
     {
         // Fetch the project from the database using the project_id

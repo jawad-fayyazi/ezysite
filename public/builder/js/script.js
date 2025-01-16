@@ -83,6 +83,7 @@ editor.Panels.addButton("options", {
   className: "fa fa-solid fa-floppy-disk save-icon",
   command: "saveContent",
   attributes: { title: "Save HTML and CSS" },
+  label: `<span id="red-dot" style="display: none; position: absolute; top: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; background-color: red;"></span>`,
 });
 
 // Add save button to the 'options' panel
@@ -93,25 +94,79 @@ editor.Panels.addButton("options", {
   attributes: { title: "Live this Page" },
 });
 
+
+
+
+let editedPages = {}; // Map to track pages opened and their data
+
+
+
+// Track data for the current page before switching
+const trackAndSwitchPage = (newPageId) => {
+  const activePageId = pagesApi.getSelected()?.id;
+  const html = editor.getHtml();
+  const css = editor.getCss();
+  updatePageData(activePageId, html, css); // Save the current page's data before switching
+  pagesApi.select(newPageId); // Switch to the new page
+  renderPages(); // Update the UI for the selected page
+};
+
+
+// Function to update page data in the object
+const updatePageData = (pageId, html, css) => {
+  if (editedPages[pageId]) {
+    // Update existing page data
+    editedPages[pageId].html = html;
+    editedPages[pageId].css = css;
+  } else {
+    // Add new page data
+    editedPages[pageId] = { html, css };
+  }
+};
+
+
+// Event listener for editor updates
+editor.on("update", () => {
+  const activePageId = pagesApi.getSelected()?.id;
+  if (activePageId) {
+    const htmlContent = editor.getHtml();
+    const cssContent = editor.getCss();
+    updatePageData(activePageId, htmlContent, cssContent);
+  }
+});
+
+
 function saveContent() {
   startLoadingAnimation();
   editor.store();
 
-  // Get the current page's HTML and CSS
-  const htmlContent = editor.getHtml();
-  const cssContent = editor.getCss();
-  const activePageId = pagesApi.getSelected()?.id; // Get the ID of the active/selected page
+  // Check if no page data exists in the editedPages object
+  if (Object.keys(editedPages).length === 0) {
+    // If no pages exist in the object, add the current page's data
 
-  // Prepare data to send to the backend
+    const currentPageHtml = editor.getHtml();
+    const currentPageCss = editor.getCss();
+    const currentPageId = pagesApi.getSelected()?.id;
+    editedPages[currentPageId] = {
+      html: currentPageHtml,
+      css: currentPageCss,
+    };
+  }
+
+  // Prepare data for all tracked pages
+  const pagesData = Object.entries(editedPages).map(([pageId, data]) => ({
+    pageId,
+    html: data.html,
+    css: data.css,
+  }));
+
   const data = {
-    html: htmlContent,
-    css: cssContent,
-    pageId: activePageId, // Replace this with the actual current page ID
     websiteId: projectId,
+    pages: pagesData,
   };
 
-  // Send data to backend (using Fetch API)
-  fetch("/pages/data", {
+  // Send the data to the backend
+  fetch("/pages/all-data", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -124,16 +179,18 @@ function saveContent() {
       if (result.success) {
         setTimeout(() => {
           showSuccessAnimation();
-          console.log("Saved!!!");
+          console.log("Pages data saved successfully!");
+          editedPages = {}; // Clear the map after successful save
         }, 1500);
       } else {
-        // showErrorAnimation(); // Error feedback
+        errorAnimation();
         console.error("Save failed:", result.message);
+        console.log("Failed pages:", result.failedPages);
       }
     })
     .catch((error) => {
-      // showErrorAnimation(); // Handle network errors
-      console.error("Error saving content:", error);
+      errorAnimation();
+      console.error("Error saving pages data:", error);
     });
 }
 
@@ -145,7 +202,7 @@ function startLoadingAnimation() {
 function showSuccessAnimation() {
   const button = editor.Panels.getButton("options", "save-button");
   button.set("className", "fa fa-check checkmark-icon"); // Change icon to checkmark
-
+  hidePendingChanges();
   // Reset back to original icon after 1.5 seconds
   setTimeout(() => {
     button.set("className", "fa fa-solid fa-floppy-disk save-icon"); // Original save icon
@@ -156,21 +213,65 @@ function loadContent() {
   editor.load();
 }
 
+let saveTimeout;
+
 editor.Commands.add("saveContent", {
   run: function () {
+    clearTimeout(saveTimeout);
     saveContent();
   },
 });
 
-let saveTimeout;
 editor.on("update", function () {
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(saveContent, 5000); // Save after 5-second delay
 });
 
 editor.on("update", function () {
-  startLoadingAnimation();
+  showPendingChanges();
 });
+
+
+let originalProjectName = document.getElementById("project-name").innerText;
+let is_pending_flag = true;
+// Function to show red dot when there are unsaved changes
+function showPendingChanges() {
+  if (is_pending_flag) {
+    const redDot = document.getElementById("red-dot");
+    const projectName = document.getElementById("project-name");
+    if (redDot) redDot.style.display = "inline"; // Show the red dot
+    if (projectName) projectName.innerText = originalProjectName + "*";
+    is_pending_flag = false;
+  }
+}
+
+
+// Function to hide red dot once changes are saved
+function hidePendingChanges() {
+  const redDot = document.getElementById("red-dot");
+  const projectName = document.getElementById("project-name");
+  if (redDot) redDot.style.display = "none"; // Hide the red dot
+  if (projectName) projectName.innerText = originalProjectName;
+  is_pending_flag = true;
+}
+
+
+
+function errorAnimation() {
+  
+    const button = editor.Panels.getButton("options", "save-button");
+    button.set("className", "fa fa-solid fa-circle-exclamation fa-beat-fade error-icon"); // Change icon to checkmark
+
+    // Reset back to original icon after 1.5 seconds
+    setTimeout(() => {
+      button.set("className", "fa fa-solid fa-floppy-disk save-icon"); // Original save icon
+      showPendingChanges();
+    }, 4500);
+  
+
+}
+
+
 
 // Get the Pages API
 const pagesApi = editor.Pages;
@@ -253,9 +354,15 @@ function renderPages() {
       const editPageBtn = li.querySelector(".edit-page");
       editPageBtn.addEventListener("click", (e) => {
         e.stopPropagation(); // Prevent li click from triggering page selection
-        pagesApi.select(page.id); // Open the page for editing
-        subMenu.style.display = "none"; // Close sub-menu after action
-        renderPages();
+        const pid = page.id;
+        if (pid) { 
+          trackAndSwitchPage(pid); 
+          subMenu.style.display = "none"; // Close sub-menu after action
+          renderPages();
+        }
+        else {
+          renderPages();
+        }
       });
 
       // Handle "VIEW" click (currently does nothing)
@@ -494,7 +601,7 @@ iconBar.addEventListener("click", function () {
 // Assuming you have the GrapesJS editor instance available as `editor`
 editor.on("load", () => {
   // Wait for GrapesJS to load
-  const logo = "TeknoFlair"; // The project name or any dynamic content
+  const logo = "Ezysite"; // The project name or any dynamic content
 
   // Find the button container in the panel (gjs-pn-button)
   const buttons = document.querySelectorAll(".gjs-pn-buttons"); // Assuming there's one button, or use a more specific selector
@@ -677,83 +784,83 @@ editor.Commands.add("liveContent", {
 //   }
 // });
 
-document.getElementById("test").addEventListener("click", function () {
-  // Step 1: Extract HTML and CSS from GrapesJS
-  const builderHTML = editor.getHtml(); // Replace `editor` with your GrapesJS editor instance
-  const builderCSS = editor.getCss();
+// document.getElementById("test").addEventListener("click", function () {
+//   // Step 1: Extract HTML and CSS from GrapesJS
+//   const builderHTML = editor.getHtml(); // Replace `editor` with your GrapesJS editor instance
+//   const builderCSS = editor.getCss();
 
-  // Step 2: Set desired size and aspect ratio
-  const targetWidth = 1280; // Example: Set width to 1280px
-  const aspectRatio = 9 / 16; // Example: Maintain 16:9 aspect ratio
-  const targetHeight = targetWidth * aspectRatio;
+//   // Step 2: Set desired size and aspect ratio
+//   const targetWidth = 1280; // Example: Set width to 1280px
+//   const aspectRatio = 9 / 16; // Example: Maintain 16:9 aspect ratio
+//   const targetHeight = targetWidth * aspectRatio;
 
-  // Step 3: Create a temporary div to render the extracted content
-  const tempDiv = document.createElement("div");
-  tempDiv.id = "temporaryCaptureDiv";
-  tempDiv.style.position = "absolute";
-  tempDiv.style.top = "0";
-  tempDiv.style.left = "0";
-  tempDiv.style.width = `${targetWidth}px`; // Set the width for the content
-  tempDiv.style.height = `${targetHeight}px`; // Adjust height as needed
-  tempDiv.style.overflow = "hidden"; // Avoid overflow issues
-  tempDiv.style.backgroundColor = "#fff"; // Set background color to avoid transparency issues
-  tempDiv.style.zIndex = "-1"; // Hide from view
+//   // Step 3: Create a temporary div to render the extracted content
+//   const tempDiv = document.createElement("div");
+//   tempDiv.id = "temporaryCaptureDiv";
+//   tempDiv.style.position = "absolute";
+//   tempDiv.style.top = "0";
+//   tempDiv.style.left = "0";
+//   tempDiv.style.width = `${targetWidth}px`; // Set the width for the content
+//   tempDiv.style.height = `${targetHeight}px`; // Adjust height as needed
+//   tempDiv.style.overflow = "hidden"; // Avoid overflow issues
+//   tempDiv.style.backgroundColor = "#fff"; // Set background color to avoid transparency issues
+//   tempDiv.style.zIndex = "-1"; // Hide from view
 
-  // Add the div to the body first
-  document.body.appendChild(tempDiv);
+//   // Add the div to the body first
+//   document.body.appendChild(tempDiv);
 
-  // Step 4: Create and append the full boilerplate HTML structure
-  const boilerplateHTML = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Temporary Capture</title>
-            <style>${builderCSS}</style> <!-- Add extracted CSS -->
-        </head>
-        <body>
-            ${builderHTML} <!-- Add extracted HTML -->
-        </body>
-        </html>
-    `;
+//   // Step 4: Create and append the full boilerplate HTML structure
+//   const boilerplateHTML = `
+//         <!DOCTYPE html>
+//         <html lang="en">
+//         <head>
+//             <meta charset="UTF-8">
+//             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//             <title>Temporary Capture</title>
+//             <style>${builderCSS}</style> <!-- Add extracted CSS -->
+//         </head>
+//         <body>
+//             ${builderHTML} <!-- Add extracted HTML -->
+//         </body>
+//         </html>
+//     `;
 
-  // Inject boilerplate into the div
-  tempDiv.innerHTML = boilerplateHTML;
+//   // Inject boilerplate into the div
+//   tempDiv.innerHTML = boilerplateHTML;
 
-  // Step 5: Ensure all images are loaded before capturing
-  const images = tempDiv.querySelectorAll("img");
-  const promises = Array.from(images).map((img) => {
-    return new Promise((resolve) => {
-      if (img.complete) {
-        resolve();
-      } else {
-        img.onload = img.onerror = resolve;
-      }
-    });
-  });
+//   // Step 5: Ensure all images are loaded before capturing
+//   const images = tempDiv.querySelectorAll("img");
+//   const promises = Array.from(images).map((img) => {
+//     return new Promise((resolve) => {
+//       if (img.complete) {
+//         resolve();
+//       } else {
+//         img.onload = img.onerror = resolve;
+//       }
+//     });
+//   });
 
-  Promise.all(promises).then(() => {
-    // Step 6: Capture the content using html2canvas
-    html2canvas(tempDiv, {
-      width: targetWidth,
-      height: targetHeight,
-      scale: 1, // Adjust scaling to improve resolution
-    })
-      .then(function (canvas) {
-        const image = canvas.toDataURL("image/png");
+//   Promise.all(promises).then(() => {
+//     // Step 6: Capture the content using html2canvas
+//     html2canvas(tempDiv, {
+//       width: targetWidth,
+//       height: targetHeight,
+//       scale: 1, // Adjust scaling to improve resolution
+//     })
+//       .then(function (canvas) {
+//         const image = canvas.toDataURL("image/png");
 
-        // Trigger download
-        const link = document.createElement("a");
-        link.href = image;
-        link.download = "new_screenshot.png";
-        link.click();
+//         // Trigger download
+//         const link = document.createElement("a");
+//         link.href = image;
+//         link.download = "new_screenshot.png";
+//         link.click();
 
-        // Clean up the temporary div
-        document.body.removeChild(tempDiv);
-      })
-      .catch(function (error) {
-        console.error("Error capturing screenshot:", error);
-      });
-  });
-});
+//         // Clean up the temporary div
+//         document.body.removeChild(tempDiv);
+//       })
+//       .catch(function (error) {
+//         console.error("Error capturing screenshot:", error);
+//       });
+//   });
+// });

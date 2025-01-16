@@ -359,10 +359,10 @@ new class extends Component implements HasForms {
 
         Notification::make()
             ->success()
-            ->title('Template updated successfully')
+            ->title('Template settings updated successfully')
             ->send();
 
-        $this->redirect('/templates/starter/');
+        $this->redirect('/templates/starter/edit' . '/' . $this->template->template_id);
     }
 
 

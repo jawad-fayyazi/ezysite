@@ -21,7 +21,8 @@ class TemplateHeaderFooter extends Model
         'json',
         'html',
         'css',
-        'is_header'
+        'is_header',
+        'live',
     ];
 
     // Define the relationship with the Template model

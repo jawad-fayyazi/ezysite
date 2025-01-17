@@ -20,6 +20,7 @@ class HeaderFooter extends Model
         'css',
         'json',
         'is_header',
+        'live',
     ];
 
 

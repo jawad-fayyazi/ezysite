@@ -44,6 +44,7 @@ new class extends Component implements HasForms {
     public $imageCache = [];
     public $message = '';
     public $isPreview = false;
+    public $allPagesId = [];
 
     // Mount method to set the project_id from the URL and fetch the project
     public function mount($project_id): void
@@ -107,7 +108,18 @@ new class extends Component implements HasForms {
             $this->mainPage->save(); // Save the updated main page
         }
 
-        $this->liveData['pages'] = $this->pages->pluck('id')->toArray(); // Populate with all page IDs
+        if ($this->project->live) {
+            // If the project is live, select only the pages where `live` is true
+            $this->liveData['pages'] = $this->pages->where('live', true)->pluck('id')->toArray();
+            $this->liveData['header'] = (bool) $this->header->live;
+            $this->liveData['footer'] = (bool) $this->footer->live;
+
+        } else {
+            // If the project is not live, select all page IDs
+            $this->liveData['pages'] = $this->pages->pluck('id')->toArray();
+        }
+
+        $this->allPagesId = $this->pages->pluck('id')->toArray(); // Populate with all page IDs
 
         // Pre-fill the form with existing project data
         $this->form->fill([
@@ -179,8 +191,6 @@ new class extends Component implements HasForms {
                     ->imageCropAspectRatio('1:1')
                     ->imageResizeTargetWidth('260')
                     ->imageResizeTargetHeight('260')
-                    ->directory("usersites/{$this->project->project_id}")
-                    ->disk('public')
                     ->maxSize(1024)
                     ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png',])
                     ->helperText('Upload a favicon for your website'),
@@ -618,15 +628,15 @@ new class extends Component implements HasForms {
         if ($logo) {
             // The logo is in an array, extract the file
             $file = reset($logo); // Get the first value from the array
-            $newPath = "usersites/{$this->project->project_id}/logo/{$this->project->project_id}." . pathinfo($file, PATHINFO_EXTENSION);
+            $newPath = "usersites/{$this->project->project_id}/logo/";
 
-            if (Storage::disk('public')->exists($file)) {
+            if ($file instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
                 try {
-                    // Use storeAs to save the file on the public disk
-                    Storage::disk('public')->move($file, $newPath);
-                    Storage::disk('public')->delete($file);
+                    $fileExtension = $file->getClientOriginalExtension(); // Get the file's original extension
+                    $fileName = "{$this->project->project_id}.{$fileExtension}";
+                    $file->storeAs($newPath, $fileName, 'public');
                     $this->project->update([
-                        'favicon' => "{$this->project->project_id}." . pathinfo($file, PATHINFO_EXTENSION),
+                        'favicon' => $fileName,
                     ]);
                 } catch (\Exception $e) {
                     Notification::make()
@@ -1651,7 +1661,41 @@ $newProject->save();
                     ];
                 }
             }
+
+            $page->update([
+                'live' => true,
+            ]);
         }
+
+        $uncheckedPageIds = array_diff($this->allPagesId, $pages);
+        // Update live status for unchecked pages
+        foreach ($uncheckedPageIds as $pageId) {
+            $page = WebPage::find($pageId);
+            if ($page) {
+                $page->live = false; // Mark as not live
+                $page->save();
+            }
+        }
+
+    if ($header) {
+        $header->update([
+            'live' => true,
+        ]);
+    } else {
+        $this->header->update([
+            'live' => false,
+        ]);
+    }
+
+    if ($footer) {
+        $footer->update([
+            'live' => true,
+        ]);
+    } else {
+        $this->footer->update([
+            'live' => false,
+        ]);
+    }
 
         // Update project domain
         $this->project->update([
@@ -2632,8 +2676,7 @@ HTML;
                                     <label for="{{$page->id}}" class="text-sm">
                                     <input type="checkbox" wire:model="liveData.pages" value="{{ $page->id }}" class="fi-checkbox-input rounded border-none bg-white shadow-sm ring-1 transition duration-75 checked:ring-0 focus:ring-2 focus:ring-offset-0 disabled:pointer-events-none disabled:bg-gray-50 disabled:text-gray-50 disabled:checked:bg-current disabled:checked:text-gray-400 dark:bg-white/5 dark:disabled:bg-transparent dark:disabled:checked:bg-gray-600 text-primary-600 ring-gray-950/10 focus:ring-primary-600 checked:focus:ring-primary-500/50 dark:text-primary-500 dark:ring-white/20 dark:checked:bg-primary-500 dark:focus:ring-primary-500 dark:checked:focus:ring-primary-400/50 dark:disabled:ring-white/10"
                                     wire:loading.attr="disabled"
-                                    id="{{$page->id}}"
-                                    @if($page->main) checked disabled @endif>
+                                    id="{{$page->id}}">
                                     <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">{{ $page->name }}</span>
                                         @if($page->main)
                     <span class="text-gray-500 text-xs">(Main Page)</span>
@@ -2646,7 +2689,7 @@ HTML;
                             @enderror
                         </div>
                     
-                        <!-- Header Option -->
+                        <!-- Header & Footer Option -->
                     <div class="grid gap-y-2">
                             <label class="fi-fo-field-wrp-label inline-flex items-center gap-x-3">
                                 <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">Select Header & Footer</span>

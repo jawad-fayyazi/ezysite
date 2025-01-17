@@ -7,6 +7,8 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Livewire\Volt\Component;
+use App\Models\WebPage; // Assuming you have the WebPage model
+use App\Models\HeaderFooter;
 use App\Models\PrivateTemplate;
 use App\Models\PrivateTemplateHf;
 use App\Models\PrivateTempPage;
@@ -26,7 +28,7 @@ new class extends Component implements HasForms {
     public $footer;
     public $pages = [];
     public $mainPage;
-    
+
     // Mount method to set the template_id from the URL and fetch the template
     public function mount($private_template_id): void
     {
@@ -60,7 +62,7 @@ new class extends Component implements HasForms {
 
         // Pre-fill the form with existing template data
         $this->form->fill([
-            'template_name' => $this->template->template_name,
+            'name' => $this->template->template_name,
             'description' => $this->template->description,
         ]);
 
@@ -71,79 +73,18 @@ new class extends Component implements HasForms {
     {
         return $form
             ->schema([
-                TextInput::make('template_name')
-                    ->label('Template Name')
-                    ->placeholder('Enter Template Name')
+                TextInput::make('name')
+                    ->label('Website Name')
+                    ->placeholder('Enter Website Name')
                     ->maxLength(255),
                 Textarea::make('description')
                     ->label('Description')
-                    ->placeholder('Enter Template Description')
+                    ->placeholder('Enter Website Description')
                     ->rows(5)
                     ->maxLength(1000), // Limit description length
             ])
             ->statePath('data');
     }
-
-    // Save template changes
-    public function save(): void
-    {
-        $data = $this->form->getState();
-
-        // Update template name if provided
-        if (!empty($data['template_name'])) {
-            $this->template->update(['template_name' => $data['template_name']]);
-        }
-
-        // Update description if provided
-        if (!empty($data['description'])) {
-            $this->template->update(['description' => $data['description']]);
-        }
-
-        Notification::make()
-            ->success()
-            ->title('Template updated successfully')
-            ->send();
-
-        $this->redirect('/templates/my'); // Redirect to the user's private templates page
-    }
-
-
-    // Duplicate the template
-    public function duplicate(): void
-    {
-        // Replicate the template
-        $newTemplate = $this->template->replicate();
-        $newTemplate->template_name = $this->template->template_name . ' (Copy)';
-        $newTemplate->save();
-
-        Notification::make()
-            ->success()
-            ->title('Template duplicated successfully')
-            ->send();
-
-        $this->redirect('/templates/my'); // Redirect to templates page after duplication
-    }
-
-    // Create a website from this template
-    public function createWebsiteFromTemplate(): void
-    {
-        // Create a new project using the template
-        $project = new Project();
-        $project->project_name = $this->template->template_name . ' (Created from My Templates)'; // Use template name as project name
-        $project->description = $this->template->description; // Use template description
-        $project->project_json = $this->template->template_json; // Use template data for the project
-        $project->user_id = auth()->id(); // Associate with the logged-in user
-        $project->save();
-
-        Notification::make()
-            ->success()
-            ->title('Website created successfully from template')
-            ->send();
-
-        $this->redirect("/websites"); // Redirect to the newly created website
-    }
-
-
 
 
     public function copyImage($sourcePath, $destinationPath)
@@ -228,7 +169,7 @@ new class extends Component implements HasForms {
         }
 
         // Check if the name is missing
-        if (empty($this->data['template_name'])) {
+        if (empty($this->data['name'])) {
             Notification::make()
                 ->danger()
                 ->title('Error')
@@ -353,7 +294,7 @@ new class extends Component implements HasForms {
 
 
         $project = auth()->user()->projects()->create([
-            'project_name' => $this->data['template_name'],
+            'project_name' => $this->data['name'],
             'description' => $this->data['description'],
             'project_json' => $templateJson, // Use the template JSON for the new website
             'header_embed' => $headerEmbedGlobal,
@@ -382,7 +323,7 @@ new class extends Component implements HasForms {
 
 
         // Create header and footer entries and link them to the project
-        $header = PrivateTemplateHf::create([
+        $header = HeaderFooter::create([
             'website_id' => $project->project_id,
             'json' => $headerJson,
             'html' => $headerHtml,
@@ -391,7 +332,7 @@ new class extends Component implements HasForms {
         ]);
 
         // Create header and footer entries and link them to the project
-        $footer = PrivateTemplateHf::create([
+        $footer = HeaderFooter::create([
             'website_id' => $project->project_id,
             'json' => $footerJson,
             'html' => $footerHtml,
@@ -410,7 +351,7 @@ new class extends Component implements HasForms {
                     ->send();
                 return;
             }
-            $pageCreated = PrivateTempPage::create([
+            $pageCreated = WebPage::create([
                 'page_id' => $page['page_id'],
                 'name' => $page['name'],
                 'slug' => $page['slug'],
@@ -435,10 +376,50 @@ new class extends Component implements HasForms {
     }
 
 
+    private function deleteDirectory($dir)
+    {
+        // Check if the directory exists
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        // Get all files and subdirectories inside the target directory
+        $files = array_diff(scandir($dir), ['.', '..']);
+
+        // Loop through files and subdirectories and delete them
+        foreach ($files as $file) {
+            $filePath = $dir . DIRECTORY_SEPARATOR . $file;
+
+            if (is_dir($filePath)) {
+                // Recursively delete subdirectories
+                $this->deleteDirectory($filePath);
+            } else {
+                // Delete the file
+                unlink($filePath);
+            }
+        }
+
+        // Remove the now-empty directory
+        rmdir($dir);
+    }
 
     // Delete the template
     public function delete(): void
     {
+
+        // Define the target folder path
+        $targetFolder = "/var/www/ezysite/public/storage/private-templates/{$this->template->id}";
+
+        // Check if the folder exists
+        if (file_exists($targetFolder)) {
+            // Recursive function to delete files and directories
+            $this->deleteDirectory($targetFolder);
+        }
+        $this->header->delete();
+        $this->footer->delete();
+        foreach ($this->pages as $page) {
+            $page->delete();
+        }
         $this->template->delete();
 
         Notification::make()
@@ -461,9 +442,8 @@ new class extends Component implements HasForms {
     <div class="bg-white p-6 rounded-lg shadow-lg">
         <div class="flex items-center justify-between mb-5">
             <!-- Display the current template name as a heading -->
-            <x-app.heading title="Editing: {{ $this->template->template_name }}"
-                description="Update the template name or description below, or delete the template." :border="false" />
-                <x-button tag="button" wire:click="createWebsiteFromTemplate" color="primary">Create Website from Template</x-button>
+            <x-app.heading title="Creating from: {{ $this->template->template_name }}"
+                description="{{$this->template->description}}" :border="false" />
         </div>
         <form wire:submit.prevent="save" class="space-y-6">
             <!-- Form Fields -->
@@ -478,24 +458,9 @@ new class extends Component implements HasForms {
     <x-button type="button" wire:click="create" class="text-white bg-primary-600 hover:bg-primary-500">
         Create Website
     </x-button>
-
-    <!-- Dropdown for additional actions -->
-    <x-dropdown class="text-gray-500">
-        <x-slot name="trigger">
-            <x-button type="button" color="gray">
-                More Actions
-            </x-button>
-        </x-slot>
-
-        <!-- Duplicate Template Action -->
-        <a href="#" wire:click="duplicate" class="block px-4 py-2  hover:bg-gray-100 text-gray-700 flex items-center">
-            <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Template
-        </a>
-        <!-- Delete Template Action -->
-        <a href="#" wire:click="delete" class="block px-4 py-2  hover:bg-gray-100 text-gray-700 text-red-600 flex items-center">
-            <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Template
-        </a>
-    </x-dropdown>
+        <x-button type="button" wire:click="delete" color="danger"  wire:confirm="Are you sure you want to delete this template?">
+            Delete Template
+        </x-button>
 </div>
 
         </form>

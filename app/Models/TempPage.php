@@ -28,7 +28,8 @@ class TempPage extends Model
         'embed_code_end',
         'template_id',
         'html',
-        'css'
+        'css',
+        'live',
     ];
 
     // Define the relationship with the Template model

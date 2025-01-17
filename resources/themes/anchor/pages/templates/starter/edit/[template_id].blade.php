@@ -38,6 +38,7 @@ new class extends Component implements HasForms {
     public $shouldRedirect = true; // Flag to control redirection
     public $liveData = [];
     public $categoryName;
+    public $allPagesId = [];
 
 
 
@@ -130,13 +131,23 @@ new class extends Component implements HasForms {
             'robots_txt' => $this->template->robots_txt,
         ];
 
-        $this->liveData['pages'] = $this->pages->pluck('id')->toArray(); // Populate with all page IDs
+
+        if ($this->template->live) {
+            // If the project is live, select only the pages where `live` is true
+            $this->liveData['pages'] = $this->pages->where('live', true)->pluck('id')->toArray();
+            $this->liveData['header'] = (bool) $this->header->live;
+            $this->liveData['footer'] = (bool) $this->footer->live;
+        } else {
+            // If the project is not live, select all page IDs
+            $this->liveData['pages'] = $this->pages->pluck('id')->toArray();
+        }
+        $this->allPagesId = $this->pages->pluck('id')->toArray(); // Populate with all page IDs
+
 
         $this->categoryName = TemplateCategory::find($this->template->template_category_id)->name;
 
 
     }
-
 
     public function form(Form $form): Form
     {
@@ -353,10 +364,6 @@ new class extends Component implements HasForms {
         }
 
 
-
-
-
-
         Notification::make()
             ->success()
             ->title('Template settings updated successfully')
@@ -364,9 +371,6 @@ new class extends Component implements HasForms {
 
         $this->redirect('/templates/starter/edit' . '/' . $this->template->template_id);
     }
-
-
-
 
     public function createPage()
     {
@@ -396,7 +400,6 @@ new class extends Component implements HasForms {
 
 
     }
-
 
     public function deletePage($pageId)
     {
@@ -430,7 +433,6 @@ new class extends Component implements HasForms {
 
         }
     }
-
 
     public function pageUpdate($pageId)
     {
@@ -523,9 +525,6 @@ new class extends Component implements HasForms {
         }
     }
 
-
-
-
     public function headerUpdate(){
 
         $this->header->update([
@@ -548,10 +547,6 @@ new class extends Component implements HasForms {
         Notification::make()->success()->title('Footer data updated successfully.')->send();
         $this->redirect('/templates/starter/edit' . '/' . $this->template->template_id);
     }
-
-
-
-
 
     public function headerCreate()
     {
@@ -576,9 +571,6 @@ new class extends Component implements HasForms {
         ]);
         return $this->footer; // Return the created footer
     }
-
-
-
 
     public function saveDomain(){
         $domain = $this->liveData['domain'];
@@ -659,7 +651,6 @@ new class extends Component implements HasForms {
             return true;
         }
     }
-
 
     public function liveWebsite() 
     {
@@ -1064,6 +1055,42 @@ new class extends Component implements HasForms {
                     ];
                 }
             }
+
+            $page->update([
+                'live' => true,
+            ]);
+        }
+
+        $uncheckedPageIds = array_diff($this->allPagesId, $pages);
+        // Update live status for unchecked pages
+        foreach ($uncheckedPageIds as $pageId) {
+            $page = TempPage::find($pageId);
+            if ($page) {
+                $page->live = false; // Mark as not live
+                $page->save();
+            }
+        }
+
+
+
+        if ($header) {
+            $header->update([
+                'live' => true,
+            ]);
+        } else {
+            $this->header->update([
+                'live' => false,
+            ]);
+        }
+
+        if ($footer) {
+            $footer->update([
+                'live' => true,
+            ]);
+        } else {
+            $this->footer->update([
+                'live' => false,
+            ]);
         }
 
         // Update project domain
@@ -1086,9 +1113,6 @@ new class extends Component implements HasForms {
             ];
         }
     }
-
-
-
 
     public function addActiveClassToMenu($headerCode, $pageSlug) {
         // Remove the leading slash from the page slug (if any)
@@ -1131,9 +1155,6 @@ new class extends Component implements HasForms {
         // Perform the replacement using preg_replace_callback to apply the callback to each match
         return preg_replace_callback($pattern, $callback, $headerCode);
     }
-
-
-
 
     // Function to handle base64 image and save it
     public function saveBase64Image($base64Image, $domain)
@@ -1189,8 +1210,6 @@ new class extends Component implements HasForms {
         // Return the relative path of the saved image
         return "/img/{$imageName}";
     }
-
-
 
     private function buildFullHtml($data)
     {
@@ -1373,8 +1392,6 @@ HTML;
         rmdir($dir);
     }
 
-
-
     public function updateLiveWebsite()
     {
 
@@ -1459,6 +1476,58 @@ HTML;
         }
     }
 
+    // Delete the template
+    public function delete(): void
+    {
+
+        // Check if the project is live
+        if ($this->template->live) {
+            // Temporarily disable redirection
+            $this->shouldRedirect = false;
+            $delete = $this->deleteLiveWebsite();
+
+            if ($delete['status'] === 'danger') {
+
+                $title = $delete['title'];  // Set title for live
+                $body = $delete['body'];    // Set body for live
+
+                // Send notification
+                Notification::make()
+                    ->danger()
+                    ->title($title)
+                    ->body($body)
+                    ->send();
+
+                $this->redirect('/websites' . '/' . $this->project->project_id);
+                return;
+            }
+        }
+
+
+        // Define the target folder path
+        $targetFolder = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}";
+
+        // Check if the folder exists
+        if (file_exists($targetFolder)) {
+            // Recursive function to delete files and directories
+            $this->deleteDirectory($targetFolder);
+        }
+        $this->header->delete();
+        $this->footer->delete();
+        foreach ($this->pages as $page) {
+            $page->delete();
+        }
+        $this->template->delete();
+
+        Notification::make()
+            ->success()
+            ->title('Template deleted successfully')
+            ->send();
+
+        $this->redirect('/templates/starter/');
+    }
+
+
 
 }
     ?>
@@ -1481,7 +1550,7 @@ HTML;
                             alt="Template Favicon" class="w-6 h-6 rounded-full mr-2">
                         @endif
                     <!-- Heading: Template Name -->
-                    <x-app.heading title="Editing {{ $template->template_name }}"
+                    <x-app.heading title="Editing: {{ $template->template_name }}"
                         description="You're editing this template." :border="false" />
                     </div>
                     <!-- Template Image -->
@@ -1498,7 +1567,7 @@ HTML;
                 
                  <!-- Domain or URL -->
                 <div class="space-y-2">
-                    <h3 class="text-lg font-medium">Live Website</h3>
+                    <h3 class="text-lg font-medium">Live Template</h3>
                     @if($this->template->domain)
                     <a href="{{ 'https://' . $this->template->domain . $this->ourDomain}}"
                     class="text-blue-600 hover:underline"
@@ -1616,24 +1685,10 @@ HTML;
                             class="text-white bg-primary-600 hover:bg-primary-500">
                             Save Chnages
                         </x-button>
-                         <!-- Dropdown for More Actions -->
-                            <x-dropdown class="text-gray-500">
-                                <x-slot name="trigger">
-                                    <x-button type="button" color="gray">More Actions</x-button>
-                                </x-slot>
-
-                                <!-- Duplicate Website -->
-                                <a href="#" wire:click="duplicate"
-                                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
-                                    <x-icon name="phosphor-copy" class="w-4 h-4 mr-2" /> Duplicate Template
-                                </a>
-
-                                <!-- Delete Website -->
-                                <a href="#" wire:click="delete"
-                                    class="block px-4 py-2 text-red-600 hover:bg-gray-100 flex items-center" wire:confirm="Are you sure you want to delete this template?">
-                                    <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" /> Delete Template
-                                </a>
-                            </x-dropdown>
+                        <x-button type="button" wire:click="delete"
+                            color="danger" wire:confirm="Are you sure you want to delete this template?">
+                            Delete Template
+                        </x-button>
                     </div>
                 </form>
 </div>
@@ -2160,8 +2215,7 @@ HTML;
                                     id="{{$page->id}}"
                                     type="checkbox" wire:model="liveData.pages" value="{{ $page->id }}"
                                     wire:loading.attr="disabled" 
-                                    class = "fi-checkbox-input rounded border-none bg-white shadow-sm ring-1 transition duration-75 checked:ring-0 focus:ring-2 focus:ring-offset-0 disabled:pointer-events-none disabled:bg-gray-50 disabled:text-gray-50 disabled:checked:bg-current disabled:checked:text-gray-400 dark:bg-white/5 dark:disabled:bg-transparent dark:disabled:checked:bg-gray-600 text-primary-600 ring-gray-950/10 focus:ring-primary-600 checked:focus:ring-primary-500/50 dark:text-primary-500 dark:ring-white/20 dark:checked:bg-primary-500 dark:focus:ring-primary-500 dark:checked:focus:ring-primary-400/50 dark:disabled:ring-white/10"
-                                    @if($page->main) checked disabled @endif>
+                                    class = "fi-checkbox-input rounded border-none bg-white shadow-sm ring-1 transition duration-75 checked:ring-0 focus:ring-2 focus:ring-offset-0 disabled:pointer-events-none disabled:bg-gray-50 disabled:text-gray-50 disabled:checked:bg-current disabled:checked:text-gray-400 dark:bg-white/5 dark:disabled:bg-transparent dark:disabled:checked:bg-gray-600 text-primary-600 ring-gray-950/10 focus:ring-primary-600 checked:focus:ring-primary-500/50 dark:text-primary-500 dark:ring-white/20 dark:checked:bg-primary-500 dark:focus:ring-primary-500 dark:checked:focus:ring-primary-400/50 dark:disabled:ring-white/10">
                                     <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">{{ $page->name }}</span>
                                         @if($page->main)
                     <span class="text-gray-500 text-xs">(Main Page)</span>
@@ -2219,7 +2273,7 @@ HTML;
                             <x-button color="danger" type="button" wire:click="deleteLiveWebsite"  wire:confirm="Are you sure you want to take down this template?">Take Down</x-button>
                     @else
                         <!-- Cancel Button -->
-                    <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
+                    <x-button tag="a" href="/templates/starter/{{ $template->template_category_id }}" color="secondary">Cancel</x-button>
                     <!-- Make it Live Button -->
                     <x-button wire:click="liveWebsite" type="submit" color="primary">
                         Go Live

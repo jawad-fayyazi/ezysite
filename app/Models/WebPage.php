@@ -34,6 +34,7 @@ class WebPage extends Model
         'website_id',
         'html',
         'css',
+        'live',
     ];
 
     /**

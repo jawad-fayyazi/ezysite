@@ -318,7 +318,7 @@ new class extends Component implements HasForms {
             if ($file instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
                 try {
                     $fileExtension = $file->getClientOriginalExtension(); // Get the file's original extension
-                    $fileName = "{$this->template->template_id}.{$fileExtension}";
+                    $fileName = uniqid().".{$fileExtension}";
                     // Use storeAs to save the file on the public disk
                     $file->storeAs($newPath, $fileName, 'public');
                     // Update the favicon in the template record
@@ -346,7 +346,7 @@ new class extends Component implements HasForms {
             if ($file instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
                 try {
                     $fileExtension = $file->getClientOriginalExtension(); // Get the file's original extension
-                    $fileName = "{$this->template->template_id}.{$fileExtension}";
+                    $fileName = uniqid().".{$fileExtension}";
                     // Use storeAs to save the file on the public disk
                     $file->storeAs($newPath, $fileName, 'public');
                     // Update the favicon in the template record

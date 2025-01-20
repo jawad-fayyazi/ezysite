@@ -34,6 +34,7 @@ const editor = grapesjs.init({
     "grapesjs-tooltip",
     "grapesjs-tui-image-editor",
     "grapesjs-typed",
+    "grapesjs-plugin-export",
   ],
 
   // Define their options here in a single `pluginsOpts` object
@@ -42,6 +43,7 @@ const editor = grapesjs.init({
     "gjs-blocks-basic": {}, // Options for the second plugin
     "grapesjs-custom-code": {}, // Options for the third plugin
     "grpaesjs-plugin-forms": {},
+    "grapesjs-plugin-export": { },
   },
 });
 

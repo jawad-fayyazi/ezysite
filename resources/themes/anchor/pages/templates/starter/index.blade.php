@@ -15,7 +15,17 @@ new class extends Component {
     {
         // Fetch distinct categories from the templates table
         // You can replace 'category' with the actual name of the column holding the category in the table
-        $this->categories = TemplateCategory::orderBy('id')->get(); // Get all categories in order of their id
+        if (Gate::allows('create-template')) {
+            $this->categories = TemplateCategory::orderBy('id')->get(); // Get all categories in order of their id
+        }else{
+            $this->categories = TemplateCategory::whereHas('templates', function ($query) {
+                // Ensure that there are templates and they are published
+                $query->where('is_publish', 1);
+            })
+                ->orderBy('id')
+                ->get();
+        }
+
     }
 
 }

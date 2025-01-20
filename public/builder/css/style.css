@@ -1,80 +1,83 @@
 /* Background Colors */
 .gjs-one-bg {
-    background-color: #2c2f33 !important;
-    /* Dark charcoal */
+    background-color: #1e1e1e !important;
+    /* Soft black */
 }
 
 .gjs-two-bg {
-    background-color: #36393f !important;
-    /* Medium-dark gray */
+    background-color: #282828 !important;
+    /* Dark gray */
 }
 
 .gjs-three-bg {
-    background-color: #444b52 !important;
-    /* Slightly lighter gray */
+    background-color: #333333 !important;
+    /* Medium-dark gray */
 }
 
 /* Text Colors */
 .gjs-one-color {
-    color: #e4e6eb !important;
-    /* Soft white */
+    color: #d1d1d1 !important;
+    /* Softer light gray */
 }
 
 .gjs-two-color {
-    color: #aeb3b9 !important;
-    /* Cool gray */
+    color: #a6a6a6 !important;
+    /* Muted gray text */
 }
 
 .gjs-four-color-h {
-    color: #7289da !important;
-    /* Blue for hover or highlight */
+    color: #c2c2c2 !important;
+    /* Subtle light gray for hover/highlight */
 }
 
 /* Border Styling */
 .gjs-border-color {
-    border-color: #4e555d !important;
-    /* Subtle gray border */
+    border-color: #3e3e3e !important;
+    /* Muted dark gray for borders */
 }
 
 /* Button and Accent Colors */
 .gjs-btn {
-    background-color: #7289da !important;
-    /* Discord-inspired blue */
-    color: #ffffff !important;
-    /* White text */
+    background-color: #3a3a3a !important;
+    /* Dark gray for buttons */
+    color: #d1d1d1 !important;
+    /* Soft light gray text */
     border-radius: 5px !important;
     /* Rounded buttons */
 }
 
 .gjs-btn:hover {
-    background-color: #5b6fbe !important;
-    /* Slightly darker blue hover */
+    background-color: #444444 !important;
+    /* Slightly lighter gray hover */
+    color: #e0e0e0 !important;
+    /* Softer white text on hover */
 }
 
 /* Highlight for Selected Items */
 .gjs-four-color-h:hover,
 .gjs-four-color-h:focus {
-    color: #5b6fbe !important;
-    /* Slightly lighter blue for hover */
+    color: #bdbdbd !important;
+    /* Subtle gray for hover/focus */
 }
 
 /* Panels and Highlights */
 .gjs-pn-active {
-    background-color: #1e2124 !important;
-    /* Slightly darker charcoal */
-    color: #7289da !important;
-    /* Blue text */
+    background-color: #242424 !important;
+    /* Dark gray for active panels */
+    color: #c2c2c2 !important;
+    /* Subtle light gray text */
 }
 
 .gjs-pn-btn {
-    color: #7289da !important;
-    /* Blue */
+    color: #c2c2c2 !important;
+    /* Softer gray for panel buttons */
 }
 
 .gjs-pn-btn:hover {
-    color: #ffffff !important;
-    /* Bright white text */
+    color: #e0e0e0 !important;
+    /* Soft white text on hover */
 }
+
 
 
 
@@ -284,9 +287,6 @@ body {
     /* margin-left: 10px !important; */
 }
 
-
-
-
 /* Style for the sub-menu */
 .sub-menu {
 
@@ -297,9 +297,6 @@ body {
     /* Ensure it's on top of other elements */
     padding: 10px 0;
 }
-
-
-
 
 @keyframes slideDown {
     0% {
@@ -331,12 +328,6 @@ body {
 .sub-menu {
     opacity: 0;
 }
-
-
-
-
-
-
 
 /* Initial Save Icon Style */
 .save-icon {

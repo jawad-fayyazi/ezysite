@@ -30,6 +30,8 @@ new class extends Component implements HasForms {
     public $footer;
     public $pages = [];
     public $mainPage;
+    public $ourDomain = ".template.wpengineers.com";
+
 
     public function mount($template_id): void
     {
@@ -387,13 +389,15 @@ new class extends Component implements HasForms {
                     <x-app.heading title="Creating Website from {{ $template->template_name }}"
                         description="You're creating a website using this template." :border="false" />
                         <!-- Preview Button -->
+                         @if($template->live)
                         <x-button 
                             tag="a" 
-                            href="{{ $template->template_preview_link }}" 
+                            href="{{ 'https://' . $template->domain . $this->ourDomain}}"
                             target="_blank" 
-                            color="secondary">
+                            color="gray">
                             Preview Template
                         </x-button>
+                        @endif
                 </div>
 
                 <!-- Template Image -->

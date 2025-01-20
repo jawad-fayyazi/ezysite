@@ -47,7 +47,7 @@
     </div>
 
     <!-- Include GrapesJS core JS -->
-    <script src="{{ asset('builder/js/grapes.min.js') }}"></script>
+    <script src="https://unpkg.com/grapesjs@0.22.5/dist/grapes.min.js"></script>
 
     <!-- Include necessary GrapesJS plugins -->
     <script src="{{ asset('builder/js/grapesjs-preset-webpage.min.js') }}"></script>

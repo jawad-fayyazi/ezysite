@@ -39,6 +39,10 @@ new class extends Component {
                 ->where('is_publish', true)
                 ->orderBy('template_id', 'desc')
                 ->get();
+                if($this->templates->isEmpty())
+                {
+                    abort(404);
+                }
         }
     }
 

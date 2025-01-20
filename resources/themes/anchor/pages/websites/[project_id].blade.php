@@ -187,6 +187,8 @@ new class extends Component implements HasForms {
                 FileUpload::make('logo')
                     ->label('Upload Favicon')
                     ->image()
+                    ->directory("usersites/{$this->project->project_id}/logo")
+                    ->disk('public')
                     ->imageResizeMode('cover')
                     ->imageCropAspectRatio('1:1')
                     ->imageResizeTargetWidth('260')
@@ -410,7 +412,6 @@ new class extends Component implements HasForms {
     {
 
         if(!Gate::allows('create-template')){
-
             abort(404);
         }
 
@@ -605,48 +606,39 @@ new class extends Component implements HasForms {
     // Edit the project details
     public function edit(): void
     {
+
         $data = $this->form->getState();
 
 
         // Only update project_name if it is not empty
-        if (!empty($data['rename'])) {
+        if (empty($data['rename'])) {
+
+            Notification::make()
+            ->danger()
+            ->title('Website name cannot be empty!')
+            ->send();
+            return;
+        }
+
+        $logo = $this->data['logo'] ?? null;
+        if ($logo) {
+            // The logo is in an array, extract the file
+            $fileName = basename(reset($logo));
+
             $this->project->update([
-                'project_name' => $data['rename'],
+            'favicon' => $fileName,
             ]);
         }
 
         // Update project details
         $this->project->update([
+            'project_name' => $data['rename'],
             'description' => $data['description'],
             'robots_txt' => $data['robots_txt'], // Update robots.txt
             'header_embed' => $data['header_embed'], // Update header embed code
             'footer_embed' => $data['footer_embed'], // Update footer embed code
         ]);
 
-        $logo = $this->data['logo'] ?? null;
-
-        if ($logo) {
-            // The logo is in an array, extract the file
-            $file = reset($logo); // Get the first value from the array
-            $newPath = "usersites/{$this->project->project_id}/logo/";
-
-            if ($file instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
-                try {
-                    $fileExtension = $file->getClientOriginalExtension(); // Get the file's original extension
-                    $fileName = "{$this->project->project_id}.{$fileExtension}";
-                    $file->storeAs($newPath, $fileName, 'public');
-                    $this->project->update([
-                        'favicon' => $fileName,
-                    ]);
-                } catch (\Exception $e) {
-                    Notification::make()
-                        ->danger()
-                        ->title('Upload Error')
-                        ->body("Error: {$e->getMessage()}")
-                        ->send();
-                }
-            }
-        }
 
         Notification::make()
             ->success()

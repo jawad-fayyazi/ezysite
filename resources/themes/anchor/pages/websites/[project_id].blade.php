@@ -45,6 +45,8 @@ new class extends Component implements HasForms {
     public $message = '';
     public $isPreview = false;
     public $allPagesId = [];
+    public $file;
+    public $fileName;
 
     // Mount method to set the project_id from the URL and fetch the project
     public function mount($project_id): void
@@ -93,14 +95,15 @@ new class extends Component implements HasForms {
             $this->pageData[$page->id] = [
                 'page_name' => $page->name,
                 'page_title' => $page->title,
+                'og_title' => $page->og_title,
+                'og_url' => $page->og_url,
                 'meta_description' => $page->meta_description,
-                'og_tags' => $page->og,
+                'og_description' => $page->og_description,
                 'header_embed_code' => $page->embed_code_start,
                 'footer_embed_code' => $page->embed_code_end,
                 'page_slug' => $page->slug,
             ];
         }
-        ;
 
         if (!$this->mainPage && $this->pages->isNotEmpty()) {
             $this->mainPage = $this->pages->first();
@@ -885,13 +888,32 @@ $newProject->save();
 
 
 
+
+        // Check if the image file is uploaded
+        if (isset($data['og_img'])) {
+            // Get the uploaded file
+            $image = $data['og_img'];
+            // Generate a random file name (you can also append the extension)
+            $fileName = uniqid() . '.' . $image->getClientOriginalExtension();
+            // Store the image with the random name in the storage
+            $path = $image->storeAs('usersites/'.$this->project->project_id.'/img', $fileName);
+
+            if(!$path){
+                Notification::make()->danger()->title('Error')->body('Cannot save the OG image, please try agian later.')->send();
+                return redirect('/websites' . '/' . $this->project->project_id);
+            }
+        }
+
             $page->update([
                 'title' => $title,
+                'og_title' => $data['og_title'],
+                'og_url' => $data['og_url'],
+                'og_description' => $data['og_description'],
                 'meta_description' => $data['meta_description'],
-                'og' => $data['og_tags'],
                 'embed_code_start' => $data['header_embed_code'],
                 'embed_code_end' => $data['footer_embed_code'],
                 'slug' => $slug,
+                'og_img' => $fileName,
             ]);
 
             Notification::make()->success()->title('Page data updated successfully.')->send();
@@ -2167,6 +2189,12 @@ HTML;
 
     }
 
+
+    public function removeImage($pageId){
+        // Unset the specific 'og_img' for the provided page ID
+        unset($this->pageData[$pageId]['og_img']);
+    }
+
 }
 ?>
 <x-layouts.app>
@@ -2451,6 +2479,156 @@ HTML;
                                                             </div>
 
 
+                                                            <!-- OG Title -->
+                                                            <div class="form-group grid gap-y-2">
+                                                                <label for="og_title_{{ $page->id }}" class="block">
+                                                                    <span
+                                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                                        OG Title
+                                                                    </span></label>
+                                                                <div
+                                                                    class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden">
+                                                                    <input placeholder="Enter OG title" type="text"
+                                                                        id="og_title_{{ $page->id }}"
+                                                                        wire:model="pageData.{{$page->id}}.og_title"
+                                                                        class="form-control fi-input block w-full border-none py-1.5 text-base text-gray-950 transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 bg-white/0 ps-3 pe-3">
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- OG URL -->
+                                                            <div class="form-group grid gap-y-2">
+                                                                <label for="og_url_{{ $page->id }}" class="block">
+                                                                    <span
+                                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                                        OG URL
+                                                                    </span></label>
+                                                                <div
+                                                                    class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden">
+                                                                    <input placeholder="Enter OG URL" type="url"
+                                                                        id="og_url_{{ $page->id }}"
+                                                                        wire:model="pageData.{{$page->id}}.og_url"
+                                                                        class="form-control fi-input block w-full border-none py-1.5 text-base text-gray-950 transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 bg-white/0 ps-3 pe-3">
+                                                                </div>
+                                                            </div>
+
+
+
+
+                                                            <!-- Open Graph description -->
+                                                            <div class="form-group grid gap-y-2">
+                                                                <label for="og_description_{{ $page->id }}" class="block">
+                                                                    <span
+                                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                                        OG Description
+                                                                    </span></label>
+                                                                <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
+                                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+                                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
+                                                                                    dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+                                                                                    ">
+                                                                    <textarea placeholder="Add open graph description for your page" rows="5"
+                                                                        id="og_description_{{ $page->id }}"
+                                                                        wire:model="pageData.{{$page->id}}.og_description" rows="3"
+                                                                        class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
+                                                                        </textarea>
+                                                                </div>
+                                                            </div>
+
+
+
+<div class="form-group grid gap-y-2">
+
+<label for="og_img_{{ $page->id }}" class="block">
+    <span
+        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+        OG Image
+    </span></label>
+    <div 
+        class="
+        fi-input-wrp rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
+        [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+        [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
+        dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+        relative rounded-lg p-4 text-center cursor-pointer"
+        x-data="{ isDragging: false, isImageUploaded: false }"
+        x-on:dragenter="isDragging = true"
+        x-on:dragleave="isDragging = false"
+        x-on:drop="isDragging = false" 
+        @if(isset($page->id) && isset($pageData[$page->id]['og_img'])) 
+            style="height: 200px; display: flex; justify-content: center; align-items: center; position: relative;"
+        @endif
+
+        x-bind:style="{ cursor: isImageUploaded ? 'default' : 'pointer' }" 
+    >
+
+        <!-- File Name and Remove Button (using flexbox for positioning) -->
+        @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
+        <div class="absolute top-4 left-2 z-10 flex items-center space-x-2">
+            <!-- File Name (right side) -->
+            <span class="text-sm w-32 truncate">{{ $pageData[$page->id]['og_img']->getClientOriginalName() }}</span>
+        </div>
+        <div class="absolute top-4 flex items-center space-x-2 z-10" style="right: 0.5rem;">
+            <!-- Cross Button (left side) -->
+            <button 
+                wire:click="removeImage({{$page->id}})" 
+                x-on:click="isImageUploaded = false" 
+                class="text-red-500 hover:underline text-lg">
+                ×
+            </button>
+        </div>
+        @endif
+
+        <!-- Background image with blur effect -->
+        @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
+            <div class="absolute inset-0 rounded-lg" style="background-image: url('{{ $pageData[$page->id]['og_img']->temporaryUrl() }}'); filter: blur(8px); -webkit-filter: blur(8px);">
+            </div>
+        @endif
+        
+        @if(!isset($pageData[$page->id]['og_img']))
+        <span x-show="isImageUploaded" class="text-sm text-gray-400">Loading...</span>
+        @endif
+
+        <!-- Preview image without blur -->
+        @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
+            <img 
+                src="{{ $pageData[$page->id]['og_img']->temporaryUrl() }}" 
+                alt="Preview" 
+                class="object-cover rounded-lg"
+                style="height: 180px; z-index: 1;" 
+            >
+        @endif
+
+        <!-- Content (input and text) -->
+        <input 
+            type="file" 
+            id="og_img_{{ $page->id }}"
+            wire:model="pageData.{{ $page->id }}.og_img" 
+            class="absolute inset-0 opacity-0 cursor-pointer"
+            @change="isImageUploaded = true"
+            x-bind:disabled="isImageUploaded"
+            x-bind:style="{ cursor: isImageUploaded ? 'default' : 'pointer' }" 
+        >
+        @if(!isset($pageData[$page->id]['og_img']))
+        <p x-show="!isImageUploaded" class="text-gray-500">
+            Drag & drop a file here or click to upload
+        </p>
+        <p x-show="isDragging && !isImageUploaded" class="text-blue-500">
+            Drop your file here
+        </p>
+        @endif
+
+    </div>
+
+    @error('pageData.{{ $page->id }}.og_img')
+        <p class="text-red-500 text-sm">{{ $message }}</p>
+    @enderror
+</div>
+
+
+
+
+
+
                                                             <!-- Meta Description -->
                                                             <div class="form-group grid gap-y-2">
                                                                 <label for="page_meta_description_{{ $page->id }}" class="block">
@@ -2468,27 +2646,7 @@ HTML;
                                                                         class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
                                                                                                                                         </textarea>
                                                                 </div>
-                                                                </div>
-
-                                                            <!-- Open Graph Tags -->
-                                                            <div class="form-group grid gap-y-2">
-                                                                <label for="page_og_tags_{{ $page->id }}" class="block">
-                                                                    <span
-                                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
-                                                                        Open Graph Tags
-                                                                    </span></label>
-                                                                <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
-                                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
-                                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
-                                                                                    dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
-                                                                                    ">
-                                                                    <textarea placeholder="Add open graph tag for your page" rows="5"
-                                                                        id="page_og_tags_{{ $page->id }}"
-                                                                        wire:model="pageData.{{$page->id}}.og_tags" rows="3"
-                                                                        class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
-                                                                        </textarea>
-                                                                </div>
-                                                            </div>
+                                                                </div>                                                            
 
                                                             <!-- Header Embed Code -->
                                                             <div class="form-group grid gap-y-2">

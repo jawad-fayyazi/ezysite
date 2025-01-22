@@ -47,6 +47,8 @@ new class extends Component implements HasForms {
     public $allPagesId = [];
     public $file;
     public $fileName;
+    public $validationError;
+    public $isImageValid = false;
 
     // Mount method to set the project_id from the URL and fetch the project
     public function mount($project_id): void
@@ -893,15 +895,40 @@ $newProject->save();
         if (isset($data['og_img'])) {
             // Get the uploaded file
             $image = $data['og_img'];
+
+        // Allowed MIME types
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+
+        // Check if the file exists and is valid
+        if (!$image || !$image->isValid()) {
+            Notification::make()->danger()->title('Error')->body('Invalid image uploaded.')->send();
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+
+
+        // Attempt to get the MIME type using finfo (more robust than getMimeType)
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $image->getRealPath());
+        finfo_close($finfo);
+
+        // Check if MIME type is allowed
+        if (!in_array($mimeType, $allowedMimeTypes)) {
+            Notification::make()->danger()->title('Error')->body('Unsupported image type. Only JPG, JPEG, and PNG are allowed.')->send();
+            return redirect('/websites' . '/' . $this->project->project_id);
+        }
+
             // Generate a random file name (you can also append the extension)
             $fileName = uniqid() . '.' . $image->getClientOriginalExtension();
             // Store the image with the random name in the storage
             $path = $image->storeAs('usersites/'.$this->project->project_id.'/img', $fileName);
-
+            
             if(!$path){
                 Notification::make()->danger()->title('Error')->body('Cannot save the OG image, please try agian later.')->send();
                 return redirect('/websites' . '/' . $this->project->project_id);
             }
+            $page->update([
+                'og_img' => $fileName,
+            ]);
         }
 
             $page->update([
@@ -913,7 +940,6 @@ $newProject->save();
                 'embed_code_start' => $data['header_embed_code'],
                 'embed_code_end' => $data['footer_embed_code'],
                 'slug' => $slug,
-                'og_img' => $fileName,
             ]);
 
             Notification::make()->success()->title('Page data updated successfully.')->send();
@@ -2195,6 +2221,34 @@ HTML;
         unset($this->pageData[$pageId]['og_img']);
     }
 
+    public function validateImage($img, $pageId)
+    {
+        // Allowed MIME types
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+
+        // Check if the file exists and is valid
+        if (!$img || !$img->isValid()) {
+            $this->validationError = 'Invalid image uploaded.';
+            return false;
+        }
+
+
+        // Attempt to get the MIME type using finfo (more robust than getMimeType)
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $img->getRealPath());
+        finfo_close($finfo);
+
+        // Check if MIME type is allowed
+        if (!in_array($mimeType, $allowedMimeTypes)) {
+            $this->validationError = 'Unsupported image type. Only JPG, JPEG, and PNG are allowed.';
+            return false;
+        }
+
+        // Clear error if validation passes
+        $this->validationError = null;
+        return true;
+    }
+
 }
 ?>
 <x-layouts.app>
@@ -2579,17 +2633,24 @@ HTML;
         @endif
 
         <!-- Background image with blur effect -->
-        @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
+        @if(isset($page->id) && isset($pageData[$page->id]['og_img']) && $this->validateImage($pageData[$page->id]['og_img'], $page->id))
             <div class="absolute inset-0 rounded-lg" style="background-image: url('{{ $pageData[$page->id]['og_img']->temporaryUrl() }}'); filter: blur(8px); -webkit-filter: blur(8px);">
             </div>
         @endif
         
         @if(!isset($pageData[$page->id]['og_img']))
-        <span x-show="isImageUploaded" class="text-sm text-gray-400">Loading...</span>
+        <span x-show="isImageUploaded" class="text-sm text-gray-400" wire:loading>Loading...</span>
         @endif
-
+        <?php
+        if(validateImage()){?>
+            <p class="text-red-500 text-sm" wire:loading.remove>
+                {{ $validationError }}
+            </p>
+        <?php
+        }
+?>
         <!-- Preview image without blur -->
-        @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
+        @if(isset($page->id) && isset($pageData[$page->id]['og_img']) && $this->validateImage($pageData[$page->id]['og_img'], $page->id))
             <img 
                 src="{{ $pageData[$page->id]['og_img']->temporaryUrl() }}" 
                 alt="Preview" 
@@ -2607,6 +2668,7 @@ HTML;
             @change="isImageUploaded = true"
             x-bind:disabled="isImageUploaded"
             x-bind:style="{ cursor: isImageUploaded ? 'default' : 'pointer' }" 
+            accept=".png,.jpg,.jpeg"
         >
         @if(!isset($pageData[$page->id]['og_img']))
         <p x-show="!isImageUploaded" class="text-gray-500">

@@ -1856,6 +1856,128 @@ HTML;
                                                             </div>
 
 
+<div class="form-group grid gap-y-2">
+<div x-data="{
+        image: null,
+        imageUrl: null,
+        fileName: null,
+        error: null,
+        isDragging: false,
+        canClick: true,
+        validateFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                const maxFileSize = 1 * 1024 * 1024; // 1 MB
+                if (!allowedTypes.includes(file.type)) {
+                    this.error = 'Invalid file type. Only JPG, JPEG, and PNG are allowed.';
+                    this.clearImage();
+                } else if (file.size > maxFileSize) {
+                    this.error = 'File size exceeds 1 MB limit.';
+                    this.clearImage();
+                } else {
+                    this.error = null;
+                    this.image = file;
+                    this.imageUrl = URL.createObjectURL(file);
+                    this.fileName = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+                    this.canClick = false; // Disable click after selecting an image
+                }
+            }
+        },
+        clearImage() {
+            this.image = null;
+            this.imageUrl = null;
+            this.fileName = null;
+            this.canClick = true; // Re-enable click after clearing the image
+        },
+        handleDrop(event) {
+            event.preventDefault();
+            this.isDragging = false;
+            const file = event.dataTransfer.files[0];
+            this.validateFile({ target: { files: [file] } });
+        },
+        handleDragOver(event) {
+            event.preventDefault();
+            this.isDragging = true;
+        },
+        handleDragLeave() {
+            this.isDragging = false;
+        }
+    }" class="form-group grid gap-y-2 relative">
+    <label for="og_img_{{ $page->id }}" class="block">
+        <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">OG Image</span>
+    </label>
+
+    <div 
+        class="fi-input-wrp rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 
+               [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+               [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 
+               dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+               relative rounded-lg p-4 text-center cursor-pointer"
+        style="min-height: 4.75rem;"
+        @dragover="handleDragOver" 
+        @dragleave="handleDragLeave" 
+        @drop="handleDrop"
+        @click="canClick ? $refs.fileInput.click() : null"
+    >
+        <!-- Hidden File Input -->
+        <input 
+            type="file" 
+            id="og_img_{{ $page->id }}" 
+            @change="validateFile($event)" 
+            class="hidden" 
+            accept=".jpeg, .png, .jpg" 
+            x-ref="fileInput"
+        />
+
+        <!-- Blurred Background -->
+        <div 
+            x-show="imageUrl" 
+            class="absolute inset-0 rounded-lg bg-cover bg-center z-0" 
+            :style="imageUrl ? `background-image: url(${imageUrl}); filter: blur(4px);` : ''"
+        ></div>
+
+        <div
+            x-show="imageUrl" 
+            class="absolute top-0 flex justify-between items-center w-full p-2">
+            <!-- File Name -->
+            <span class="text-black text-sm mt-1" x-text="fileName"></span>
+            <!-- Cross Button -->
+            <button 
+            style="margin-right: 1.25rem;"
+            @click.stop="clearImage" class="text-white bg-red-500 p-1 rounded-full hover:bg-red-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div x-show="isDragging" class="absolute inset-0 flex items-center justify-center text-xl text-gray-700 dark:text-white z-20">
+            <span>Drop here</span>
+        </div>
+        <div x-show="!isDragging && !imageUrl" class="absolute inset-0 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-20">
+            <span>Drag and drop an image here or click to select</span>
+        </div>
+
+        <!-- Image Preview Section -->
+        <div x-show="imageUrl" class="relative mt-3 z-30">
+            <img :src="imageUrl" alt="Image Preview" class="max-w-xs h-auto rounded shadow-lg mx-auto" style="max-height: 200px;" />
+        </div>
+    </div>
+
+    <div x-show="error" class="text-red-500 text-sm mt-1">
+        <span x-text="error"></span>
+    </div>
+</div>
+</div> 
+
+
+
+
+
+
+
+
                                                             <!-- Meta Description -->
                                                             <div class="form-group grid gap-y-2">
                                                                 <label for="page_meta_description_{{ $page->id }}" class="block">

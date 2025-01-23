@@ -47,8 +47,6 @@ new class extends Component implements HasForms {
     public $allPagesId = [];
     public $file;
     public $fileName;
-    public $validationError;
-    public $isImageValid = false;
 
     // Mount method to set the project_id from the URL and fetch the project
     public function mount($project_id): void
@@ -104,6 +102,7 @@ new class extends Component implements HasForms {
                 'header_embed_code' => $page->embed_code_start,
                 'footer_embed_code' => $page->embed_code_end,
                 'page_slug' => $page->slug,
+                'og_img' => $page->og_img,
             ];
         }
 
@@ -388,7 +387,10 @@ new class extends Component implements HasForms {
             'title' => $page['title'],
             'meta_description' => $page['meta_description'],
             'main' => $page['main'],
-            'og' => $page['og'],
+            'og_title' => $page['og_title'],
+            'og_url' => $page['og_url'],
+            'og_description' => $page['og_description'],
+            'og_img' => $page['og_img'],
             'embed_code_start' => $page['embed_code_start'],
             'embed_code_end' => $page['embed_code_end'],
             'html' => $page['html'],
@@ -396,6 +398,20 @@ new class extends Component implements HasForms {
             'private_template_id' => $privateTemplate->id, // Associate the page with the template
             'user_id' => auth()->id(),
         ]);
+
+        if ($page->og_img) {
+            $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/og_img/{$page->og_img}";
+            if (File::exists($sourcePath)) {
+                $destinationPath = "/var/www/ezysite/public/storage/private-templates/{$privateTemplate->id}/og_img/{$page->og_img}";
+                $result = $this->copyImage($sourcePath, $destinationPath);
+                if ($result === 'danger') {
+                    Notification::make()
+                        ->danger()
+                        ->title('OG image not found')
+                        ->send();
+                }
+            }
+        }
     }
 
 
@@ -420,18 +436,18 @@ new class extends Component implements HasForms {
             abort(404);
         }
 
-    $robotsTxt = $this->project->robots_txt;
-    $headerEmbedGlobal = $this->project->header_embed;
-    $footerEmbedGlobal = $this->project->footer_embed;
-    $favIcon = $this->project->favicon;
+        $robotsTxt = $this->project->robots_txt;
+        $headerEmbedGlobal = $this->project->header_embed;
+        $footerEmbedGlobal = $this->project->footer_embed;
+        $favIcon = $this->project->favicon;
 
-    $headerHtml = $this->header->html;
-    $footerHtml = $this->footer->html;
-    $headerCss = $this->header->css;
-    $footerCss = $this->footer->css;
-    $projectJson = $this->project->project_json;
-    $headerJson = $this->header->json;
-    $footerJson = $this->footer->json;
+        $headerHtml = $this->header->html;
+        $footerHtml = $this->footer->html;
+        $headerCss = $this->header->css;
+        $footerCss = $this->footer->css;
+        $projectJson = $this->project->project_json;
+        $headerJson = $this->header->json;
+        $footerJson = $this->footer->json;
 
 
         // Check if the name is missing
@@ -586,13 +602,31 @@ new class extends Component implements HasForms {
             'title' => $page['title'],
             'meta_description' => $page['meta_description'],
             'main' => $page['main'],
-            'og' => $page['og'],
+            'og_title' => $page['og_title'],
+            'og_url' => $page['og_url'],
+            'og_description' => $page['og_description'],
+            'og_img' => $page['og_img'],
             'embed_code_start' => $page['embed_code_start'],
             'embed_code_end' => $page['embed_code_end'],
             'html' => $page['html'],
             'css' => $page['css'],
             'template_id' => $template->template_id, // Associate the page with the template
         ]);
+
+
+        if ($page->og_img) {
+            $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/og_img/{$page->og_img}";
+            if (File::exists($sourcePath)) {
+                $destinationPath = "/var/www/ezysite/public/storage/templates/{$template->template_id}/og_img/{$page->og_img}";
+                $result = $this->copyImage($sourcePath, $destinationPath);
+                if ($result === 'danger') {
+                    Notification::make()
+                        ->danger()
+                        ->title('OG image not found')
+                        ->send();
+                }
+            }
+        }
     }
 
 
@@ -892,35 +926,23 @@ $newProject->save();
 
 
         // Check if the image file is uploaded
-        if (isset($data['og_img'])) {
+        if (isset($data['og_img_file'])) {
             // Get the uploaded file
-            $image = $data['og_img'];
+            $image = $data['og_img_file'];
 
-        // Allowed MIME types
-        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-
-        // Check if the file exists and is valid
-        if (!$image || !$image->isValid()) {
-            Notification::make()->danger()->title('Error')->body('Invalid image uploaded.')->send();
-            return redirect('/websites' . '/' . $this->project->project_id);
-        }
-
-
-        // Attempt to get the MIME type using finfo (more robust than getMimeType)
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $image->getRealPath());
-        finfo_close($finfo);
-
-        // Check if MIME type is allowed
-        if (!in_array($mimeType, $allowedMimeTypes)) {
-            Notification::make()->danger()->title('Error')->body('Unsupported image type. Only JPG, JPEG, and PNG are allowed.')->send();
-            return redirect('/websites' . '/' . $this->project->project_id);
-        }
-
+            // Validate the image
+            $validator = \Validator::make($data, [
+                'og_img_file' => 'required|file|mimes:jpeg,jpg,png|max:1024', // 1MB = 1024KB
+            ]);
+            // If validation fails
+            if ($validator->fails()) {
+                Notification::make()->danger()->title('Validation Error')->body('The image must be a PNG, JPEG, or JPG file and cannot exceed 1MB in size.')->send();
+                return redirect('/websites' . '/' . $this->project->project_id);
+            }
             // Generate a random file name (you can also append the extension)
             $fileName = uniqid() . '.' . $image->getClientOriginalExtension();
             // Store the image with the random name in the storage
-            $path = $image->storeAs('usersites/'.$this->project->project_id.'/img', $fileName);
+            $path = $image->storeAs('usersites/'.$this->project->project_id.'/og_img', $fileName);
             
             if(!$path){
                 Notification::make()->danger()->title('Error')->body('Cannot save the OG image, please try agian later.')->send();
@@ -1623,12 +1645,32 @@ $newProject->save();
                 }
             }
 
+             $og_img = '';
+            if($page->og_img){
+                $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/og_img/{$page->og_img}";
+                if (File::exists($sourcePath)) {
+
+                    $destinationPath = $targetFolder . "/img/{$page->og_img}";
+                    $result = $this->copyImage($sourcePath, $destinationPath);
+                    if ($result === 'danger') {
+                        Notification::make()
+                            ->danger()
+                            ->title('og_img not found')
+                            ->send();
+                    }
+                    $og_img = "/img/{$page->og_img}";
+                }
+            }
+
             $pageHtml = $page->html;
             $pageCss = $page->css;
             $title = $page->title;
             $slug = $page->slug;
             $metaDescription = $page->meta_description ?? '';
-            $ogTags = $page->og ?? '';
+            $ogImg = $og_img;
+            $ogTitle = $page->og_title ?? '';
+            $ogUrl = $page->og_url ?? '';
+            $ogDescription = $page->og_description ?? '';
             $headerEmbed = $page->embed_code_start ?? '';
             $footerEmbed = $page->embed_code_end ?? '';
             $pageSlug = $page->main ? 'index' : $slug;
@@ -1667,7 +1709,10 @@ $newProject->save();
             $html = $this->buildFullHtml([
                 'title' => $title,
                 'meta_description' => $metaDescription,
-                'og_tags' => $ogTags,
+                'og_img' => $ogImg,
+                'og_title' => $ogTitle,
+                'og_description' => $ogDescription,
+                'og_url' => $ogUrl,
                 'fav_icon' => $favIcon,
                 'header_embed' => $globalHeaderEmbed . $headerEmbed, // Combine global and page-specific header embeds
                 'footer_embed' => $globalFooterEmbed . $footerEmbed, // Combine global and page-specific footer embeds
@@ -1878,6 +1923,22 @@ $newProject->save();
             ->send();            
     }
 
+    $og_tags = '';
+    if (!empty($data['og_title']) || !empty($data['og_description']) || !empty($data['og_url']) || !empty($data['og_img'])) { 
+        if (!empty($data['og_title'])) {
+            $og_tags .= '<meta property="og:title" content="' . htmlspecialchars($data['og_title']) . '">' . PHP_EOL;
+        }
+        if (!empty($data['og_description'])) {
+            $og_tags .= '<meta property="og:description" content="' . htmlspecialchars($data['og_description']) . '">' . PHP_EOL;
+        }
+        if (!empty($data['og_url'])) {
+            $og_tags .= '<meta property="og:url" content="' . htmlspecialchars($data['og_url']) . '">' . PHP_EOL;
+        }
+        if (!empty($data['og_img'])) {
+            $og_tags .= '<meta property="og:image" content="' . htmlspecialchars($data['og_img']) . '">' . PHP_EOL;
+        }
+    }
+
         $boilerplate = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -1885,7 +1946,8 @@ $newProject->save();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="{$data['meta_description']}">
-    {$data['og_tags']}
+    <meta property="og:type" content="website" />
+    {$og_tags}
     <title>{$data['title']}</title>
     <style>
         {$data['header_css']}
@@ -2213,40 +2275,43 @@ HTML;
         $this->shouldRedirect = true;
 
 
-    }
+    }  
 
 
-    public function removeImage($pageId){
-        // Unset the specific 'og_img' for the provided page ID
-        unset($this->pageData[$pageId]['og_img']);
-    }
-
-    public function validateImage($img, $pageId)
-    {
-        // Allowed MIME types
-        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-
-        // Check if the file exists and is valid
-        if (!$img || !$img->isValid()) {
-            $this->validationError = 'Invalid image uploaded.';
-            return false;
+    public function unsettAndDeleteOgImg($pageId){
+        
+        if(isset($this->pageData[$pageId]['og_img'])){
+            $dir = '/var/www/ezysite/public/storage/usersites/'.$this->project->project_id.'/og_img';
+            if (file_exists($dir)) {
+                $this->deleteDirectory($dir);
+                $page = WebPage::find($pageId);
+                if($page){
+                    $page->update([
+                        'og_img' => null,
+                    ]);
+                }
+                Notification::make()
+                ->success()
+                ->title('Image deleted successfully')
+                ->send();
+                return redirect('/websites' . '/' . $this->project->project_id);
+            }
+            else{
+                $page = WebPage::find($pageId);
+                if($page){
+                    $page->update([
+                        'og_img' => null,
+                    ]);
+                }
+                Notification::make()
+                ->danger()
+                ->title('No image found')
+                ->body("Please try again later.")
+                ->send();
+                return redirect('/websites' . '/' . $this->project->project_id);
+            }
         }
 
-
-        // Attempt to get the MIME type using finfo (more robust than getMimeType)
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $img->getRealPath());
-        finfo_close($finfo);
-
-        // Check if MIME type is allowed
-        if (!in_array($mimeType, $allowedMimeTypes)) {
-            $this->validationError = 'Unsupported image type. Only JPG, JPEG, and PNG are allowed.';
-            return false;
-        }
-
-        // Clear error if validation passes
-        $this->validationError = null;
-        return true;
     }
 
 }
@@ -2590,101 +2655,147 @@ HTML;
 
 
 
+
 <div class="form-group grid gap-y-2">
-
-<label for="og_img_{{ $page->id }}" class="block">
-    <span
-        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
-        OG Image
-    </span></label>
-    <div 
-        class="
-        fi-input-wrp rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
-        [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
-        [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
-        dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
-        relative rounded-lg p-4 text-center cursor-pointer"
-        x-data="{ isDragging: false, isImageUploaded: false }"
-        x-on:dragenter="isDragging = true"
-        x-on:dragleave="isDragging = false"
-        x-on:drop="isDragging = false" 
-        @if(isset($page->id) && isset($pageData[$page->id]['og_img'])) 
-            style="height: 200px; display: flex; justify-content: center; align-items: center; position: relative;"
-        @endif
-
-        x-bind:style="{ cursor: isImageUploaded ? 'default' : 'pointer' }" 
-    >
-
-        <!-- File Name and Remove Button (using flexbox for positioning) -->
-        @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
-        <div class="absolute top-4 left-2 z-10 flex items-center space-x-2">
-            <!-- File Name (right side) -->
-            <span class="text-sm w-32 truncate">{{ $pageData[$page->id]['og_img']->getClientOriginalName() }}</span>
-        </div>
-        <div class="absolute top-4 flex items-center space-x-2 z-10" style="right: 0.5rem;">
-            <!-- Cross Button (left side) -->
-            <button 
-                wire:click="removeImage({{$page->id}})" 
-                x-on:click="isImageUploaded = false" 
-                class="text-red-500 hover:underline text-lg">
-                ×
-            </button>
-        </div>
-        @endif
-
-        <!-- Background image with blur effect -->
-        @if(isset($page->id) && isset($pageData[$page->id]['og_img']) && $this->validateImage($pageData[$page->id]['og_img'], $page->id))
-            <div class="absolute inset-0 rounded-lg" style="background-image: url('{{ $pageData[$page->id]['og_img']->temporaryUrl() }}'); filter: blur(8px); -webkit-filter: blur(8px);">
-            </div>
-        @endif
-        
-        @if(!isset($pageData[$page->id]['og_img']))
-        <span x-show="isImageUploaded" class="text-sm text-gray-400" wire:loading>Loading...</span>
-        @endif
-        <?php
-        if(validateImage()){?>
-            <p class="text-red-500 text-sm" wire:loading.remove>
-                {{ $validationError }}
-            </p>
-        <?php
+<div x-data="{
+        image: null,
+        imageUrl: null,
+        fileName: null,
+        error: null,
+        isDragging: false,
+        canClick: true,
+        validateFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                const maxFileSize = 1 * 1024 * 1024; // 1 MB
+                if (!allowedTypes.includes(file.type)) {
+                    this.error = 'Invalid file type. Only JPG, JPEG, and PNG are allowed.';
+                    this.clearImage();
+                } else if (file.size > maxFileSize) {
+                    this.error = 'File size exceeds 1 MB limit.';
+                    this.clearImage();
+                } else {
+                    this.error = null;
+                    this.image = file;
+                    this.imageUrl = URL.createObjectURL(file);
+                    this.fileName = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+                    this.canClick = false; // Disable click after selecting an image
+                }
+            }
+        },
+        clearImage() {
+            this.image = null;
+            this.imageUrl = null;
+            this.fileName = null;
+            this.canClick = true; // Re-enable click after clearing the image
+        },
+        handleDrop(event) {
+            event.preventDefault();
+            this.isDragging = false;
+            const file = event.dataTransfer.files[0];
+            this.validateFile({ target: { files: [file] } });
+        },
+        handleDragOver(event) {
+            event.preventDefault();
+            this.isDragging = true;
+        },
+        handleDragLeave() {
+            this.isDragging = false;
         }
-?>
-        <!-- Preview image without blur -->
-        @if(isset($page->id) && isset($pageData[$page->id]['og_img']) && $this->validateImage($pageData[$page->id]['og_img'], $page->id))
-            <img 
-                src="{{ $pageData[$page->id]['og_img']->temporaryUrl() }}" 
-                alt="Preview" 
-                class="object-cover rounded-lg"
-                style="height: 180px; z-index: 1;" 
-            >
-        @endif
+    }" class="form-group grid gap-y-2 relative">
+    <label for="og_img_{{ $page->id }}" class="block">
+        <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">OG Image</span>
+    </label>
+    <div 
+        class="fi-input-wrp rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 
+               [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+               [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 
+               dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+               relative rounded-lg p-4 text-center cursor-pointer"
+        style="min-height: 4.75rem;"
+        @dragover="handleDragOver" 
+        @dragleave="handleDragLeave" 
+        @drop="handleDrop"
+        @click="canClick ? $refs.fileInput.click() : null"
+    >
+                @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
+                        <!-- Blurred Background -->
+                        <div 
+                            class="absolute inset-0 rounded-lg bg-cover bg-center z-0" 
+                            style="background-image:url('{{ asset('storage/usersites/'.$this->project->project_id.'/og_img/'.$pageData[$page->id]['og_img'])}}'); filter: blur(4px);"
+                        ></div>
+                                <div
+                                    class="absolute top-0 flex justify-between items-center w-full p-2">
+                                    <!-- File Name -->
+                                    <span class="text-black text-sm mt-1">{{$pageData[$page->id]['og_img']}}</span>
+                                    <!-- Cross Button -->
+                                    <button wire:confirm="Are you sure you want to delete this OG image?" wire:click="unsettAndDeleteOgImg({{$page->id}})"
+                                    style="margin-right: 1.25rem;"
+                                    class="text-white bg-red-500 p-1 rounded-full hover:bg-red-600">
+                                    <x-icon name="phosphor-trash" class="w-4 h-4" />
+                                    </button>
+                                </div>
 
-        <!-- Content (input and text) -->
+                <!-- Image Preview Section -->
+                <div class="relative mt-3 z-30">
+                    <img src="{{ asset('storage/usersites/'.$this->project->project_id.'/og_img/'.$pageData[$page->id]['og_img'])}}" alt="Image Preview" class="max-w-xs h-auto rounded shadow-lg mx-auto" style="max-height: 200px;" />
+                </div>
+
+                @else
+        <!-- Hidden File Input -->
         <input 
             type="file" 
-            id="og_img_{{ $page->id }}"
-            wire:model="pageData.{{ $page->id }}.og_img" 
-            class="absolute inset-0 opacity-0 cursor-pointer"
-            @change="isImageUploaded = true"
-            x-bind:disabled="isImageUploaded"
-            x-bind:style="{ cursor: isImageUploaded ? 'default' : 'pointer' }" 
-            accept=".png,.jpg,.jpeg"
-        >
-        @if(!isset($pageData[$page->id]['og_img']))
-        <p x-show="!isImageUploaded" class="text-gray-500">
-            Drag & drop a file here or click to upload
-        </p>
-        <p x-show="isDragging && !isImageUploaded" class="text-blue-500">
-            Drop your file here
-        </p>
-        @endif
+            id="og_img_{{ $page->id }}" 
+            @change="validateFile($event)" 
+            class="hidden" 
+            accept=".jpeg, .png, .jpg" 
+            x-ref="fileInput"
+            wire:model="pageData.{{ $page->id }}.og_img_file"
+        />
 
+        <!-- Blurred Background -->
+        <div 
+            x-show="imageUrl" 
+            class="absolute inset-0 rounded-lg bg-cover bg-center z-0" 
+            :style="imageUrl ? `background-image: url(${imageUrl}); filter: blur(4px);` : ''"
+        ></div>
+
+        <div
+            x-show="imageUrl" 
+            class="absolute top-0 flex justify-between items-center w-full p-2">
+            <!-- File Name -->
+            <span class="text-black text-sm mt-1" x-text="fileName"></span>
+            <!-- Cross Button -->
+            <button 
+            style="margin-right: 1.25rem;"
+            @click.stop="clearImage" class="text-white bg-red-500 p-1 rounded-full hover:bg-red-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div x-show="isDragging" class="absolute inset-0 flex items-center justify-center text-xl text-gray-700 dark:text-white z-20" style="font-size: 0.875rem;">
+            <span>Drop here</span>
+        </div>
+        <div x-show="!isDragging && !imageUrl" class="absolute inset-0 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-20" style="font-size: 0.875rem;">
+            <span>Drag & drop an image or <span class="text-black dark:text-black">Browse</span></span>
+        </div>
+
+
+            <!-- Image Preview Section -->
+            <div x-show="imageUrl" class="relative mt-3 z-30">
+                <img :src="imageUrl" alt="Image Preview" class="max-w-xs h-auto rounded shadow-lg mx-auto" style="max-height: 200px;" />
+            </div>
+            @endif
     </div>
 
-    @error('pageData.{{ $page->id }}.og_img')
-        <p class="text-red-500 text-sm">{{ $message }}</p>
-    @enderror
+    <div x-show="error" class="text-red-500 text-sm mt-1">
+        <span x-text="error"></span>
+    </div>
 </div>
+</div> 
 
 
 

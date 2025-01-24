@@ -189,7 +189,7 @@
                         s = !0;
                       (i.get(o) || "").indexOf("<script") >= 0 &&
                         t.placeholderScript &&
-                        ((r.innerHTML = t.placeholderScript), (s = !1)),
+                        ((r.innerHTML = i.get(o)), (s = true)), // Allow script content and set droppable to true
                         i.set({ droppable: s });
                     }, 0));
                 },

@@ -72,6 +72,8 @@ new class extends Component implements HasForms {
                 'page_id' => $page->page_id,
                 'page_name' => $page->name,
                 'page_title' => $page->title,
+                "og_title" => $page->og_title,
+                "og_url" => $page->og_url,
                 'meta_description' => $page->meta_description,
                 'og_tags' => $page->og,
                 'header_embed_code' => $page->embed_code_start,
@@ -79,6 +81,8 @@ new class extends Component implements HasForms {
                 'page_slug' => $page->slug,
                 'page_html' => $page->html,
                 'page_css' => $page->css,
+                "og_description" => $page->og_description,
+                "og_img" => $page->og_img,
             ];
         }
         ;
@@ -424,8 +428,28 @@ new class extends Component implements HasForms {
         }
 
 
+
+
+        if (isset($this->pageData[$pageId]["og_img"])) {
+            $dir =
+                "/var/www/ezysite/public/storage/templates/" .
+                $this->template->template_id .
+                "/og_img/" .
+                $this->pageData[$pageId]['og_img'];
+            if (file_exists($dir)) {
+                $this->deleteDirectory($dir);
+                $page = TempPage::find($pageId);
+                if ($page) {
+                    $page->update([
+                        "og_img" => null,
+                    ]);
+                }
+            }
+        }
+        
+
             $pageInstance->delete();
-            Notification::make()->success()->title('Main Page updated successfully.')->send();
+            Notification::make()->success()->title('Page deleted successfully.')->send();
             $this->redirect('/templates/starter/edit' . '/' . $this->template->template_id);
         } else {
             Notification::make()->danger()->title('Page not found.')->send();
@@ -478,12 +502,60 @@ new class extends Component implements HasForms {
 
 
 
+            // Check if the image file is uploaded
+            if (isset($data["og_img_file"])) {
+                // Get the uploaded file
+                $image = $data["og_img_file"];
+
+                // Validate the image
+                $validator = \Validator::make($data, [
+                    "og_img_file" =>
+                        "required|file|mimes:jpeg,jpg,png|max:1024", // 1MB = 1024KB
+                ]);
+                // If validation fails
+                if ($validator->fails()) {
+                    Notification::make()
+                        ->danger()
+                        ->title("Validation Error")
+                        ->body(
+                            "The image must be a PNG, JPEG, or JPG file and cannot exceed 1MB in size."
+                        )
+                        ->send();
+                    return redirect('/templates/starter/edit' . '/' . $this->template->template_id);
+                }
+                // Generate a random file name (you can also append the extension)
+                $fileName = uniqid() . "." . $image->getClientOriginalExtension();
+                // Store the image with the random name in the storage
+                $path = $image->storeAs(
+                    "templates/" . $this->template->template_id . "/og_img",
+                    $fileName
+                );
+
+                if (!$path) {
+                    Notification::make()
+                        ->danger()
+                        ->title("Error")
+                        ->body(
+                            "Cannot save the OG image, please try agian later."
+                        )
+                        ->send();
+                    return redirect('/templates/starter/edit' . '/' . $this->template->template_id);
+                }
+                $page->update([
+                    "og_img" => $fileName,
+                ]);
+            }
+
+
+
 
             $page->update([
                 'name' => $data['page_name'] ?? '',
                 'title' => $title,
                 'meta_description' => $data['meta_description'] ?? '',
-                'og' => $data['og_tags'] ?? '',
+                "og_title" => $data["og_title"],
+                "og_url" => $data["og_url"],
+                "og_description" => $data["og_description"],
                 'embed_code_start' => $data['header_embed_code'] ?? '',
                 'embed_code_end' => $data['footer_embed_code'] ?? '',
                 'slug' => $slug,
@@ -976,12 +1048,33 @@ new class extends Component implements HasForms {
                 }
             }
 
+            $og_img = "";
+            if ($page->og_img) {
+                $sourcePath = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}/og_img/{$page->og_img}";
+                if (File::exists($sourcePath)) {
+                    $destinationPath = $targetFolder . "/img/{$page->og_img}";
+                    $result = $this->copyImage($sourcePath, $destinationPath);
+                    if ($result === "danger") {
+                        Notification::make()
+                            ->danger()
+                            ->title("og_img not found")
+                            ->send();
+                    }
+                    $og_img = "/img/{$page->og_img}";
+                }
+            }
+
+
+
             $pageHtml = $page->html;
             $pageCss = $page->css;
             $title = $page->title;
             $slug = $page->slug;
             $metaDescription = $page->meta_description ?? '';
-            $ogTags = $page->og ?? '';
+            $ogImg = $og_img;
+            $ogTitle = $page->og_title ?? "";
+            $ogUrl = $page->og_url ?? "";
+            $ogDescription = $page->og_description ?? "";
             $headerEmbed = $page->embed_code_start ?? '';
             $footerEmbed = $page->embed_code_end ?? '';
             $pageSlug = $page->main ? 'index' : $slug;
@@ -1020,7 +1113,10 @@ new class extends Component implements HasForms {
             $html = $this->buildFullHtml([
                 'title' => $title,
                 'meta_description' => $metaDescription,
-                'og_tags' => $ogTags,
+                "og_img" => $ogImg,
+                "og_title" => $ogTitle,
+                "og_description" => $ogDescription,
+                "og_url" => $ogUrl,
                 'fav_icon' => $favIcon,
                 'header_embed' => $globalHeaderEmbed . $headerEmbed, // Combine global and page-specific header embeds
                 'footer_embed' => $globalFooterEmbed . $footerEmbed, // Combine global and page-specific footer embeds
@@ -1227,6 +1323,44 @@ new class extends Component implements HasForms {
             ->send();            
     }
 
+
+    $og_tags = "";
+        if (
+            !empty($data["og_title"]) ||
+            !empty($data["og_description"]) ||
+            !empty($data["og_url"]) ||
+            !empty($data["og_img"])
+        ) {
+            if (!empty($data["og_title"])) {
+                $og_tags .=
+                    '<meta property="og:title" content="' .
+                    htmlspecialchars($data["og_title"]) .
+                    '">' .
+                    PHP_EOL;
+            }
+            if (!empty($data["og_description"])) {
+                $og_tags .=
+                    '<meta property="og:description" content="' .
+                    htmlspecialchars($data["og_description"]) .
+                    '">' .
+                    PHP_EOL;
+            }
+            if (!empty($data["og_url"])) {
+                $og_tags .=
+                    '<meta property="og:url" content="' .
+                    htmlspecialchars($data["og_url"]) .
+                    '">' .
+                    PHP_EOL;
+            }
+            if (!empty($data["og_img"])) {
+                $og_tags .=
+                    '<meta property="og:image" content="' .
+                    htmlspecialchars($data["og_img"]) .
+                    '">' .
+                    PHP_EOL;
+            }
+        }
+
         $boilerplate = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -1234,7 +1368,8 @@ new class extends Component implements HasForms {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="{$data['meta_description']}">
-    {$data['og_tags']}
+    <meta property="og:type" content="website" />
+    {$og_tags}
     <title>{$data['title']}</title>
     <style>
         {$data['header_css']}
@@ -1367,6 +1502,13 @@ HTML;
      */
     private function deleteDirectory($dir)
     {
+
+        // Check if the directory exists or if it's actually a file
+        if (!is_dir($dir) && is_file($dir)) {
+            // If it's a file, simply delete it
+            return unlink($dir); 
+        }
+
         // Check if the directory exists
         if (!is_dir($dir)) {
             return;
@@ -1529,6 +1671,46 @@ HTML;
 
 
 
+    public function unsettAndDeleteOgImg($pageId)
+    {
+        if (isset($this->pageData[$pageId]["og_img"])) {
+            $dir =
+                "/var/www/ezysite/public/storage/templates/" .
+                $this->template->template_id .
+                "/og_img/" .
+                $this->pageData[$pageId]['og_img'];
+            if (file_exists($dir)) {
+                $this->deleteDirectory($dir);
+                $page = TempPage::find($pageId);
+                if ($page) {
+                    $page->update([
+                        "og_img" => null,
+                    ]);
+                }
+                Notification::make()
+                    ->success()
+                    ->title("Image deleted successfully")
+                    ->send();
+                return redirect('/templates/starter/edit' . '/' . $this->template->template_id);
+            } else {
+                $page = TempPage::find($pageId);
+                if ($page) {
+                    $page->update([
+                        "og_img" => null,
+                    ]);
+                }
+                Notification::make()
+                    ->danger()
+                    ->title("No image found")
+                    ->body("Please try again later.")
+                    ->send();
+                return redirect('/templates/starter/edit' . '/' . $this->template->template_id);
+            }
+        }
+    }
+
+
+
 }
     ?>
 <x-layouts.app>
@@ -1683,7 +1865,7 @@ HTML;
                             color="secondary">Cancel</x-button>
                         <x-button type="button" wire:click="create"
                             class="text-white bg-primary-600 hover:bg-primary-500">
-                            Save Chnages
+                            Save Changes
                         </x-button>
                         <x-button type="button" wire:click="delete"
                             color="danger" wire:confirm="Are you sure you want to delete this template?">
@@ -1855,125 +2037,184 @@ HTML;
                                                                 </div>
                                                             </div>
 
+                                                            <!-- OG Title -->
+                                                            <div class="form-group grid gap-y-2">
+                                                                <label for="og_title_{{ $page->id }}" class="block">
+                                                                <span
+                                                                class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                                OG Title
+                                                                </span></label>
+                                                                <div
+                                                                class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden">
+                                                                <input placeholder="Enter OG title" type="text"
+                                                                    id="og_title_{{ $page->id }}"
+                                                                    wire:model="pageData.{{$page->id}}.og_title"
+                                                                    class="form-control fi-input block w-full border-none py-1.5 text-base text-gray-950 transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 bg-white/0 ps-3 pe-3">
+                                                                </div>
+                                                            </div>
 
-<div class="form-group grid gap-y-2">
-<div x-data="{
-        image: null,
-        imageUrl: null,
-        fileName: null,
-        error: null,
-        isDragging: false,
-        canClick: true,
-        validateFile(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-                const maxFileSize = 1 * 1024 * 1024; // 1 MB
-                if (!allowedTypes.includes(file.type)) {
-                    this.error = 'Invalid file type. Only JPG, JPEG, and PNG are allowed.';
-                    this.clearImage();
-                } else if (file.size > maxFileSize) {
-                    this.error = 'File size exceeds 1 MB limit.';
-                    this.clearImage();
-                } else {
-                    this.error = null;
-                    this.image = file;
-                    this.imageUrl = URL.createObjectURL(file);
-                    this.fileName = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
-                    this.canClick = false; // Disable click after selecting an image
-                }
-            }
-        },
-        clearImage() {
-            this.image = null;
-            this.imageUrl = null;
-            this.fileName = null;
-            this.canClick = true; // Re-enable click after clearing the image
-        },
-        handleDrop(event) {
-            event.preventDefault();
-            this.isDragging = false;
-            const file = event.dataTransfer.files[0];
-            this.validateFile({ target: { files: [file] } });
-        },
-        handleDragOver(event) {
-            event.preventDefault();
-            this.isDragging = true;
-        },
-        handleDragLeave() {
-            this.isDragging = false;
-        }
-    }" class="form-group grid gap-y-2 relative">
-    <label for="og_img_{{ $page->id }}" class="block">
-        <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">OG Image</span>
-    </label>
+                                                            <!-- OG URL -->
+                                                            <div class="form-group grid gap-y-2">
+                                                                <label for="og_url_{{ $page->id }}" class="block">
+                                                                <span
+                                                                class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                                OG URL
+                                                                </span></label>
+                                                                <div
+                                                                class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20 [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-text-input overflow-hidden">
+                                                                <input placeholder="Enter OG URL" type="url"
+                                                                    id="og_url_{{ $page->id }}"
+                                                                    wire:model="pageData.{{$page->id}}.og_url"
+                                                                    class="form-control fi-input block w-full border-none py-1.5 text-base text-gray-950 transition duration-75 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 bg-white/0 ps-3 pe-3">
+                                                                </div>
+                                                            </div>
 
-    <div 
-        class="fi-input-wrp rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 
-               [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
-               [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 
-               dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
-               relative rounded-lg p-4 text-center cursor-pointer"
-        style="min-height: 4.75rem;"
-        @dragover="handleDragOver" 
-        @dragleave="handleDragLeave" 
-        @drop="handleDrop"
-        @click="canClick ? $refs.fileInput.click() : null"
-    >
-        <!-- Hidden File Input -->
-        <input 
-            type="file" 
-            id="og_img_{{ $page->id }}" 
-            @change="validateFile($event)" 
-            class="hidden" 
-            accept=".jpeg, .png, .jpg" 
-            x-ref="fileInput"
-        />
+                                                            <!-- Open Graph description -->
+                                                            <div class="form-group grid gap-y-2">
+                                                                <label for="og_description_{{ $page->id }}" class="block">
+                                                                <span
+                                                                class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+                                                                OG Description
+                                                                </span></label>
+                                                                <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
+                                                                [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+                                                                [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
+                                                                dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+                                                                ">
+                                                                <textarea placeholder="Add open graph description for your page" rows="5"
+                                                                    id="og_description_{{ $page->id }}"
+                                                                    wire:model="pageData.{{$page->id}}.og_description" rows="3"
+                                                                    class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
+                                                                </textarea>
+                                                                </div>
+                                                            </div>
 
-        <!-- Blurred Background -->
-        <div 
-            x-show="imageUrl" 
-            class="absolute inset-0 rounded-lg bg-cover bg-center z-0" 
-            :style="imageUrl ? `background-image: url(${imageUrl}); filter: blur(4px);` : ''"
-        ></div>
-
-        <div
-            x-show="imageUrl" 
-            class="absolute top-0 flex justify-between items-center w-full p-2">
-            <!-- File Name -->
-            <span class="text-black text-sm mt-1" x-text="fileName"></span>
-            <!-- Cross Button -->
-            <button 
-            style="margin-right: 1.25rem;"
-            @click.stop="clearImage" class="text-white bg-red-500 p-1 rounded-full hover:bg-red-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-
-        <div x-show="isDragging" class="absolute inset-0 flex items-center justify-center text-xl text-gray-700 dark:text-white z-20">
-            <span>Drop here</span>
-        </div>
-        <div x-show="!isDragging && !imageUrl" class="absolute inset-0 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-20">
-            <span>Drag and drop an image here or click to select</span>
-        </div>
-
-        <!-- Image Preview Section -->
-        <div x-show="imageUrl" class="relative mt-3 z-30">
-            <img :src="imageUrl" alt="Image Preview" class="max-w-xs h-auto rounded shadow-lg mx-auto" style="max-height: 200px;" />
-        </div>
-    </div>
-
-    <div x-show="error" class="text-red-500 text-sm mt-1">
-        <span x-text="error"></span>
-    </div>
-</div>
-</div> 
-
-
-
-
+                                                            <!-- Open Graph Image -->
+                                                            <div class="form-group grid gap-y-2">
+                                                                <div x-data="{
+                                                                image: null,
+                                                                imageUrl: null,
+                                                                fileName: null,
+                                                                error: null,
+                                                                isDragging: false,
+                                                                canClick: true,
+                                                                validateFile(event) {
+                                                                const file = event.target.files[0];
+                                                                if (file) {
+                                                                const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                                                                const maxFileSize = 1 * 1024 * 1024; // 1 MB
+                                                                if (!allowedTypes.includes(file.type)) {
+                                                                this.error = 'Invalid file type. Only JPG, JPEG, and PNG are allowed.';
+                                                                this.clearImage();
+                                                                } else if (file.size > maxFileSize) {
+                                                                this.error = 'File size exceeds 1 MB limit.';
+                                                                this.clearImage();
+                                                                } else {
+                                                                this.error = null;
+                                                                this.image = file;
+                                                                this.imageUrl = URL.createObjectURL(file);
+                                                                this.fileName = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+                                                                this.canClick = false; // Disable click after selecting an image
+                                                                }
+                                                                }
+                                                                },
+                                                                clearImage() {
+                                                                this.image = null;
+                                                                this.imageUrl = null;
+                                                                this.fileName = null;
+                                                                this.canClick = true; // Re-enable click after clearing the image
+                                                                },
+                                                                handleDrop(event) {
+                                                                event.preventDefault();
+                                                                this.isDragging = false;
+                                                                const file = event.dataTransfer.files[0];
+                                                                this.validateFile({ target: { files: [file] } });
+                                                                },
+                                                                handleDragOver(event) {
+                                                                event.preventDefault();
+                                                                this.isDragging = true;
+                                                                },
+                                                                handleDragLeave() {
+                                                                this.isDragging = false;
+                                                                }
+                                                                }" class="form-group grid gap-y-2 relative">
+                                                                <label for="og_img_{{ $page->id }}" class="block">
+                                                                <span class="text-sm font-medium leading-6 text-gray-950 dark:text-white">OG Image</span>
+                                                                </label>
+                                                                <div 
+                                                                class="fi-input-wrp rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 
+                                                                [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+                                                                [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 
+                                                                dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+                                                                relative rounded-lg p-4 text-center cursor-pointer"
+                                                                style="min-height: 4.75rem;"
+                                                                @dragover="handleDragOver" 
+                                                                @dragleave="handleDragLeave" 
+                                                                @drop="handleDrop"
+                                                                @click="canClick ? $refs.fileInput.click() : null"
+                                                                >
+                                                                @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
+                                                                <div
+                                                                    class="absolute top-0 flex justify-between items-center w-full p-2">
+                                                                    <!-- File Name -->
+                                                                    <span class="text-black text-sm mt-1">{{$pageData[$page->id]['og_img']}}</span>
+                                                                    <!-- Cross Button -->
+                                                                    <button wire:confirm="Are you sure you want to delete this OG image?" wire:click="unsettAndDeleteOgImg({{$page->id}})"
+                                                                    style="margin-right: 1.25rem;"
+                                                                    class="text-white bg-red-500 p-1 rounded-full hover:bg-red-600">
+                                                                    <x-icon name="phosphor-trash" class="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                                <!-- Image Preview Section -->
+                                                                <div class="relative mt-3 z-30">
+                                                                    <img src="{{ asset('storage/templates/'.$this->template->template_id.'/og_img/'.$pageData[$page->id]['og_img'])}}" alt="Image Preview" class="max-w-xs h-auto rounded shadow-lg mx-auto" style="max-height: 12.5rem;" />
+                                                                </div>
+                                                                @else
+                                                                <!-- Hidden File Input -->
+                                                                <input 
+                                                                    type="file" 
+                                                                    id="og_img_{{ $page->id }}" 
+                                                                    @change="validateFile($event)" 
+                                                                    class="hidden" 
+                                                                    accept=".jpeg, .png, .jpg" 
+                                                                    x-ref="fileInput"
+                                                                    wire:model="pageData.{{ $page->id }}.og_img_file"
+                                                                    />
+                                                                <div
+                                                                    x-show="imageUrl" 
+                                                                    class="absolute top-0 flex justify-between items-center w-full p-2">
+                                                                    <!-- File Name -->
+                                                                    <span class="text-black text-sm mt-1" x-text="fileName"></span>
+                                                                    <span>
+                                                                    <!-- Uploading/Uploaded Label -->
+                                                                    <span wire:loading wire:target="pageData.{{ $page->id }}.og_img_file"class="mt-1 text-gray-500 mr-2">Uploading...</span>
+                                                                    <!-- Cross Button -->
+                                                                    <button 
+                                                                    style="margin-right: 1.25rem;"
+                                                                    @click.stop="clearImage" class="text-white bg-red-500 p-1 rounded-full hover:bg-red-600">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                                    </svg>
+                                                                    </button>
+                                                                    </span>
+                                                                </div>
+                                                                <div x-show="isDragging" class="absolute inset-0 flex items-center justify-center text-xl text-gray-700 dark:text-white z-20" style="font-size: 0.875rem;">
+                                                                    <span>Drop here</span>
+                                                                </div>
+                                                                <div x-show="!isDragging && !imageUrl" class="absolute inset-0 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-20" style="font-size: 0.875rem;">
+                                                                    <span>Drag & drop an image or <span class="text-black dark:text-black">Browse</span></span>
+                                                                </div>
+                                                                <!-- Image Preview Section -->
+                                                                <div x-show="imageUrl" class="relative mt-3 z-30">
+                                                                    <img :src="imageUrl" alt="Image Preview" class="max-w-xs h-auto rounded shadow-lg mx-auto" style="max-height: 12.5rem;" />
+                                                                </div>
+                                                                @endif
+                                                                </div>
+                                                                <div x-show="error" class="text-red-500 text-sm mt-1">
+                                                                <span x-text="error"></span>
+                                                                </div>
+                                                            </div>
+                                                            </div>
 
 
 
@@ -1997,26 +2238,6 @@ HTML;
                                                                 </div>
                                                                 </div>
 
-                                                            <!-- Open Graph Tags -->
-                                                            <div class="form-group grid gap-y-2">
-                                                                <label for="page_og_tags_{{ $page->id }}" class="block">
-                                                                    <span
-                                                                        class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
-                                                                        Open Graph Tags
-                                                                    </span></label>
-                                                                <div class="fi-input-wrp flex rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5
-                                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
-                                                                                    [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600
-                                                                                    dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
-                                                                                    ">
-                                                                    <textarea placeholder="Add open graph tag for your page" rows="5"
-                                                                        id="page_og_tags_{{ $page->id }}"
-                                                                        wire:model="pageData.{{$page->id}}.og_tags" rows="3"
-                                                                        class="block h-full w-full border-none bg-transparent px-3 py-1.5 text-base text-gray-950 placeholder:text-gray-400 focus:ring-0 disabled:text-gray-500 disabled:[-webkit-text-fill-color:theme(colors.gray.500)] disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.400)] dark:text-white dark:placeholder:text-gray-500 dark:disabled:text-gray-400 dark:disabled:[-webkit-text-fill-color:theme(colors.gray.400)] dark:disabled:placeholder:[-webkit-text-fill-color:theme(colors.gray.500)] sm:text-sm sm:leading-6 form-control">
-                                                                        </textarea>
-                                                                </div>
-                                                            </div>
-
                                                             <!-- Header Embed Code -->
                                                             <div class="form-group grid gap-y-2">
                                                                 <label for="page_header_embed_code_{{ $page->id }}" class="block">
@@ -2036,7 +2257,6 @@ HTML;
                                                                         </textarea>
                                                                 </div>
                                                             </div>
-
                                                             <!-- Footer Embed Code -->
                                                             <div class="form-group grid gap-y-2">
                                                                 <label for="page_footer_embed_code_{{ $page->id }}" class="block">

@@ -43,7 +43,14 @@ const editor = grapesjs.init({
     "gjs-blocks-basic": {}, // Options for the second plugin
     "grapesjs-custom-code": {}, // Options for the third plugin
     "grpaesjs-plugin-forms": {},
-    "grapesjs-plugin-export": { },
+    "grapesjs-plugin-export": {},
+  },
+  parser: {
+    optionsHtml: {
+      allowScripts: true,
+      allowUnsafeAttr: true,
+      allowUnsafeAttrValue: true,
+    },
   },
 });
 

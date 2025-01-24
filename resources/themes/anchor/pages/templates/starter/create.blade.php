@@ -152,7 +152,6 @@ new class extends Component implements HasForms {
             'template_id' => $this->template->template_id,
             'html' => '',
             'css' => '',
-            'og' => '',
             'embed_code_start' => '',
             'embed_code_end' => '',
             'main' => true,

@@ -355,13 +355,30 @@ new class extends Component implements HasForms {
                 'title' => $page['title'],
                 'meta_description' => $page['meta_description'],
                 'main' => $page['main'],
-                'og' => $page['og'],
+                "og_title" => $page["og_title"],
+                "og_url" => $page["og_url"],
+                "og_description" => $page["og_description"],
+                "og_img" => $page["og_img"],
                 'embed_code_start' => $page['embed_code_start'],
                 'embed_code_end' => $page['embed_code_end'],
                 'html' => $page['html'],
                 'css' => $page['css'],
                 'website_id' => $project->project_id, // Associate the page with the project
             ]);
+
+            if ($page->og_img) {
+                $sourcePath = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}/og_img/{$page->og_img}";
+                if (File::exists($sourcePath)) {
+                    $destinationPath = "/var/www/ezysite/public/storage/usersites/{$project->project_id}/og_img/{$page->og_img}";
+                    $result = $this->copyImage($sourcePath, $destinationPath);
+                    if ($result === "danger") {
+                        Notification::make()
+                            ->danger()
+                            ->title("OG image not found")
+                            ->send();
+                    }
+                }
+            }
         }
 
         Notification::make()

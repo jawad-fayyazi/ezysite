@@ -14,16 +14,23 @@
         
         <x-marketing.sections.hero />
         
-        <x-container class="py-12 border-t sm:py-24 border-zinc-200">
-            <x-marketing.sections.features />
-        </x-container>
+        <div class="gradient-bg py-12 border-t sm:py-24 border-zinc-200">
+            <x-container>
+                <x-marketing.sections.features />
+            </x-container>
+        </div>
 
-        <x-container class="py-12 border-t sm:py-24 border-zinc-200">
-            <x-marketing.sections.testimonials />
-        </x-container>
-        
-        <x-container class="py-12 border-t sm:py-24 border-zinc-200">
-            <x-marketing.sections.pricing />
-        </x-container>
+        <div class="gradient-bg py-12 border-t sm:py-24 border-zinc-200">
+            <x-container>
+                <x-marketing.sections.testimonials />
+            </x-container>
+        </div> 
+             
+        <div class="gradient-bg py-12 border-t sm:py-24 border-zinc-200">
+            <x-container>
+                <x-marketing.sections.pricing />
+            </x-container>
+        </div>   
+
 
 </x-layouts.marketing>

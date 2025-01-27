@@ -1,9 +1,16 @@
 <section>
-    <x-marketing.elements.heading
-        level="h2"
-        title="Master the Seas of <br> Product Development"
-        description="Harness the power of Wave's extensive features to fast-track your SaaS projects. Get ready to fall in love with the future of SaaS development, today." 
-    />
+
+    <div class="relative w-full text-center">
+        <h2 class="text-3xl sm:text-4xl text-left md:text-center font-medium tracking-tighter lg:text-5xl">
+            <span class='gradient-txt'>Launch Your Ideas</span> <br> <span class='text-black'>Faster than Ever</span>
+        </h2>
+        <p class="mt-4 text-sm sm:text-base font-medium text-left md:text-center md:text-balance text-zinc-500 mx-auto max-w-2xl">
+            Empower your business with a fast and seamless website creation tool. Build and launch your site in no time, with zero hassle.
+        </p>
+    </div>
+
+
+
     <div class="text-center">
         <div class="grid grid-cols-2 gap-x-6 gap-y-12 mt-12 text-center lg:mt-16 lg:grid-cols-4 lg:gap-x-8 lg:gap-y-16">
             <div>

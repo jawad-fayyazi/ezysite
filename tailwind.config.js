@@ -27,6 +27,10 @@ export default {
 
     theme: {
         extend: {
+            fontFamily: {
+                luckiest: ['Luckiest Guy', 'cursive'],
+                inter: ['Inter', 'sans-serif'],
+            },
             animation: {
                 'marquee': 'marquee 25s linear infinite',
             },

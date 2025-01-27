@@ -1,5 +1,15 @@
 <section class="w-full">
-    <x-marketing.elements.heading level="h2" title="Oceans of Approval" description="Find out why users are on board with Wave, through their own words and success tales." />
+
+
+    <div class="relative w-full text-center">
+        <h2 class="text-3xl sm:text-4xl text-left md:text-center font-medium tracking-tighter lg:text-5xl">
+            <span class='gradient-txt'>Trusted </span> <span class='text-black'>Clients</span>
+        </h2>
+        <p class="mt-4 text-sm sm:text-base font-medium text-left md:text-center md:text-balance text-zinc-500 mx-auto max-w-2xl">
+            Empower your business with a fast and seamless website creation tool. Build and launch your site in no time, with zero hassle.
+        </p>
+    </div>
+    
     <ul role="list" class="grid grid-cols-1 gap-12 py-12 mx-auto max-w-2xl lg:max-w-none lg:grid-cols-3">
         <li>
             <figure class="flex flex-col justify-between h-full">

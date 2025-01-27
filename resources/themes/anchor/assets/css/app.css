@@ -87,3 +87,108 @@ html, body{
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+.gradient-bg {
+  background: linear-gradient(90deg, #E6E6FA, #FFFFFF);
+}
+
+.gradient-txt {
+    background: linear-gradient(90deg, #6C63FF, #00C2FF);
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+/* Primary Gradient Button Style */
+.gradient-btn-primary {
+    background: linear-gradient(90deg, #6C63FF, #00C2FF); /* Indigo to Cyan gradient */
+    color: white;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.gradient-btn-primary:hover {
+    background: linear-gradient(90deg, #9D50FF, #32FF7E); /* Neon Purple to Mint Green on hover */
+    transform: scale(1.05);
+}
+
+/* Active state - when button is pressed */
+.gradient-btn-primary:active {
+    background: linear-gradient(90deg, #9D50FF, #32FF7E); /* Neon Purple to Mint Green when active */
+    transform: scale(1); /* Prevent scaling during active state */
+}
+
+/* Focus state - when button is clicked or in focus */
+.gradient-btn-primary:focus {
+    outline: none; /* Remove the default focus outline */
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.5); /* Blue outline for focus state */
+    background: linear-gradient(90deg, #6C63FF, #00C2FF); /* Indigo to Cyan */
+    transform: scale(1.05); /* Slight zoom effect to show it's focused */
+}
+
+/* Secondary Button (Cancel or Secondary Action) */
+.gradient-btn-secondary {
+    background: #F0F8FF; /* Light Blue background for a subtle look */
+    color: #6C63FF; /* Indigo text to complement the primary button */
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    border: 2px solid #6C63FF; /* Border to outline the button */
+    transition: all 0.3s ease;
+}
+
+/* Hover effect for Secondary Button */
+.gradient-btn-secondary:hover {
+    background: #E6E6FA; /* Slightly darker background on hover */
+    color: #00C2FF; /* Change text color to cyan on hover */
+    border-color: #00C2FF; /* Border color changes to cyan */
+}
+
+/* Active state for Secondary Button */
+.gradient-btn-secondary:active {
+    background: #D8D8D8; /* Lighter gray when active */
+    color: #6C63FF; /* Text color remains indigo */
+    transform: scale(0.98); /* Slight scale down on click */
+}
+
+/* Focus state for Secondary Button */
+.gradient-btn-secondary:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.4); /* Light purple glow */
+}
+
+/* Danger Button (Critical Actions like Delete) */
+.gradient-btn-danger {
+    background: #FF4B5C; /* Red background for danger */
+    color: white; /* White text for contrast */
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    border: 2px solid #FF4B5C; /* Red border */
+    transition: all 0.3s ease;
+}
+
+/* Hover effect for Danger Button */
+.gradient-btn-danger:hover {
+    background: #FF1F2A; /* Darker red on hover */
+    border-color: #FF1F2A; /* Darker red border */
+    color: white; /* Ensure text remains readable */
+}
+
+/* Active state for Danger Button */
+.gradient-btn-danger:active {
+    background: #FF9999; /* Lighter red when active */
+    color: white; /* Text remains white */
+    transform: scale(0.98); /* Slight scale down on click */
+}
+
+/* Focus state for Danger Button */
+.gradient-btn-danger:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 75, 92, 0.4); /* Light red glow */
+}

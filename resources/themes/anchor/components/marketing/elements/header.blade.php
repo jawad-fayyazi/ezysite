@@ -26,9 +26,12 @@
             evaluateScrollPosition(); 
         })
     " 
-    :class="{ 'border-gray-200/60 bg-white/90 border-b backdrop-blur-lg' : scrolled, 'border-transparent border-b bg-transparent translate-y-0' : !scrolled }" 
-    class="box-content sticky top-0 z-50 w-full h-24" 
->
+    :class="{
+    'header-gradient text-white sticky-header': scrolled, 
+    'header-transparent text-white': !scrolled
+  }"
+  class="box-content sticky top-0 z-50 w-full h-20 header">
+
     <div 
         x-show="showOverlay"
         x-transition:enter="transition ease-out duration-300"

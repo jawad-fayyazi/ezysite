@@ -3,7 +3,7 @@
         <div class="flex flex-col items-center justify-between flex-1 w-full max-w-2xl gap-6 px-8 pt-32 mx-auto text-left md:px-12 xl:px-20 lg:pt-32 lg:pb-16 lg:max-w-7xl lg:flex-row">
             <div class="w-full lg:w-1/2">
                 <h1 class="text-6xl font-bold tracking-tighter text-left sm:text-7xl md:text-8xl sm:text-center lg:text-left">
-    <span class="block origin-left lg:scale-90 gradient-txt">Create in Days</span>
+    <span class="block origin-left lg:scale-90 gradient-txt text-nowrap">Create in </br> Days</span>
     <span class="block mt-4 text-black">Not Weeks!</span>
 </h1>
 
@@ -16,7 +16,7 @@
                 </div>
             </div>
             <div class="flex items-center justify-center w-full mt-12 lg:w-1/2 lg:mt-0">
-                <img alt="Wave Character" class="relative w-full lg:scale-125 xl:translate-x-6" src="/wave/img/character.png" style="max-width:450px;">
+                <img alt="Website Preview" class="relative w-full lg:scale-125 xl:translate-x-6" src="/wave/img/web-preview.png" style="max-width:450px;">
             </div>
         </div>
         <div class="flex-shrink-0 lg:h-[150px] flex border-t border-zinc-200 items-center w-full bg-white">

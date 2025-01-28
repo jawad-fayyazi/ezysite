@@ -1,9 +1,14 @@
 <section>
-    <x-marketing.elements.heading
-        level="h2"
-        title="Chart Your Course"
-        description="Set sail and discover the riches of our value-packed plans, meticulously designed to offer you the very best features for less on your SaaS expedition. " 
-    />
+
+    <div class="relative w-full text-center">
+        <h2 class="text-3xl sm:text-4xl text-left md:text-center font-medium tracking-tighter lg:text-5xl">
+            <span class='text-black'>Choose the </span><span class='gradient-txt'>Perfect Plan</span> </br> <span class='text-black'>for Your Business</span>
+        </h2>
+        <p class="mt-4 text-sm sm:text-base font-medium text-left md:text-center md:text-balance text-zinc-500 mx-auto max-w-2xl">
+           Whether you're just starting out or scaling your business, we’ve got a plan that fits your needs. Select the best option and start building your dream website today!
+        </p>
+    </div>
+    
 
     <div x-data="{ on: false, billing: '{{ get_default_billing_cycle() }}',
             toggleRepositionMarker(toggleButton){
@@ -88,6 +93,4 @@
             @endforeach
         </div>
     </div>
-
-    <p class="w-full mt-0 mb-8 text-center text-zinc-500 sm:my-10">All plans are fully configurable in the Admin Area.</p>
 </section>

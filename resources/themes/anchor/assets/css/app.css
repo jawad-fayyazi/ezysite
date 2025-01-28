@@ -192,3 +192,39 @@ html, body{
     outline: none;
     box-shadow: 0 0 0 3px rgba(255, 75, 92, 0.4); /* Light red glow */
 }
+
+/* Custom Gradient Background for Circle */
+.gradient-circle {
+    background: linear-gradient(45deg, #6ee7b7, #3b82f6); /* From light green to blue */
+    width: 3rem;  /* Equivalent to 48px */
+    height: 3rem; /* Equivalent to 48px */
+    border-radius: 9999px; /* Fully rounded */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Default background gradient (applied when not scrolled) */
+.header-gradient {
+  background: linear-gradient(90deg, #E6E6FA, #F0F8FF); /* Your desired gradient */
+  transition: background-color 0.3s ease, backdrop-filter 0.3s ease !important; /* Smooth transition */
+}
+
+/* When scrolled, apply 50% transparency and blur */
+.sticky-header {
+  background: linear-gradient(90deg, rgba(108, 99, 255, 0.5), rgba(0, 194, 255, 0.5)); /* 50% transparency for the gradient */
+  backdrop-filter: blur(10px); /* Adding blur effect */
+  transition: background 0.3s ease, backdrop-filter 0.3s ease !important; /* Smooth transition */
+}
+
+/* When not scrolled, keep the original gradient without blur */
+.header-transparent {
+  background: linear-gradient(90deg, #E6E6FA, #FFFFFF); /* Your desired gradient */
+  backdrop-filter: none; /* No blur when not scrolled */
+  transition: background 0.3s ease, backdrop-filter 0.3s ease !important; /* Smooth transition */
+}
+
+/* Smooth transition for header changes */
+.header {
+    transition: background 0.3s ease, opacity 0.3s ease, backdrop-filter 0.3s ease;
+}

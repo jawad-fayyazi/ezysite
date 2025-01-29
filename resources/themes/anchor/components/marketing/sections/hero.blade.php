@@ -11,15 +11,15 @@
                     Bring your vision to life with a website that works for you<span class="hidden sm:inline"> with Ezysite</span>.
                 </p>
                 <div class="flex flex-col items-center justify-center gap-3 mx-auto mt-8 md:gap-2 lg:justify-start md:ml-0 md:flex-row">
-                    <button class="gradient-btn-primary">Get satrted</button>
-                    <button class="gradient-btn-secondary">See example websites</button>
+                    <button class="gradient-btn-primary text-xs">Get satrted</button>
+                    <button class="gradient-btn-secondary text-xs">See example websites</button>
                 </div>
             </div>
             <div class="flex items-center justify-center w-full mt-12 lg:w-1/2 lg:mt-0">
                 <img alt="Website Preview" class="relative w-full lg:scale-125 xl:translate-x-6" src="/wave/img/web-preview.png" style="max-width:450px;">
             </div>
         </div>
-        <div class="flex-shrink-0 lg:h-[150px] flex border-t border-zinc-200 items-center w-full bg-white">
+        <div class="flex-shrink-0 lg:h-[150px] flex border-t border-zinc-200 items-center w-full gradient-bg">
     <div class="grid h-auto grid-cols-1 px-8 py-10 mx-auto space-y-5 divide-y max-w-7xl lg:space-y-0 lg:divide-y-0 divide-zinc-200 lg:py-0 lg:divide-x md:px-12 lg:px-20 lg:divide-zinc-200 lg:grid-cols-3">
         <div>
             <h3 class="flex items-center font-medium gradient-txt">

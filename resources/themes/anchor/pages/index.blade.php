@@ -10,6 +10,7 @@
         'image'         => url('/og_image.png'),
         'type'          => 'website'
     ]"
+    :bodyClass="'gradient-bg'"
 >
         
         <x-marketing.sections.hero />

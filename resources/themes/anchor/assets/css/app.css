@@ -108,6 +108,7 @@ html, body{
     text-transform: uppercase;
     transition: all 0.3s ease;
     border: none;
+    text-align: center;
 }
 
 .gradient-btn-primary:hover {
@@ -139,6 +140,7 @@ html, body{
     text-transform: uppercase;
     border: 2px solid #6C63FF; /* Border to outline the button */
     transition: all 0.3s ease;
+    text-align: center;
 }
 
 /* Hover effect for Secondary Button */
@@ -171,6 +173,7 @@ html, body{
     text-transform: uppercase;
     border: 2px solid #FF4B5C; /* Red border */
     transition: all 0.3s ease;
+    text-align: center;
 }
 
 /* Hover effect for Danger Button */
@@ -204,27 +207,44 @@ html, body{
     align-items: center;
 }
 
-/* Default background gradient (applied when not scrolled) */
+/* Default background gradient (applies when not scrolled) */
 .header-gradient {
-  background: linear-gradient(90deg, #E6E6FA, #F0F8FF); /* Your desired gradient */
-  transition: background-color 0.3s ease, backdrop-filter 0.3s ease !important; /* Smooth transition */
+  background: linear-gradient(90deg, #E6E6FA, #FFFFFF);
+  transition: background 0.3s ease, border 0.3s ease, backdrop-filter 0.3s ease !important;
 }
 
-/* When scrolled, apply 50% transparency and blur */
+/* When scrolled, apply 50% transparency and blur but keep the same gradient */
 .sticky-header {
-  background: linear-gradient(90deg, rgba(108, 99, 255, 0.5), rgba(0, 194, 255, 0.5)); /* 50% transparency for the gradient */
-  backdrop-filter: blur(10px); /* Adding blur effect */
-  transition: background 0.3s ease, backdrop-filter 0.3s ease !important; /* Smooth transition */
+  background: linear-gradient(90deg, rgba(230, 230, 250, 0.5), rgba(255, 255, 255, 0.5)); /* Same gradient but 50% transparent */
+  backdrop-filter: blur(10px); /* Blur effect */
+  transition: background 0.3s ease, border 0.3s ease, backdrop-filter 0.3s ease !important;
 }
 
-/* When not scrolled, keep the original gradient without blur */
+/* When not scrolled, no blur */
 .header-transparent {
-  background: linear-gradient(90deg, #E6E6FA, #FFFFFF); /* Your desired gradient */
-  backdrop-filter: none; /* No blur when not scrolled */
-  transition: background 0.3s ease, backdrop-filter 0.3s ease !important; /* Smooth transition */
+  background: linear-gradient(90deg, #E6E6FA, #FFFFFF);
+  backdrop-filter: none;
+  transition: background 0.3s ease, border 0.3s ease, backdrop-filter 0.3s ease !important;
 }
 
 /* Smooth transition for header changes */
 .header {
-    transition: background 0.3s ease, opacity 0.3s ease, backdrop-filter 0.3s ease;
+  transition: background 0.3s ease, opacity 0.3s ease, border 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+.nav-menu:hover {
+  color: transparent;
+  background: linear-gradient(90deg, #6C63FF, #00C2FF);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.nav-menu:hover svg {
+       fill: url(#gradient-svg);
+    }
+
+        /* On hover, apply gradient only to the heading */
+.menu-item:hover .text-heading {
+    background: linear-gradient(to right, #4f81e8, #9b57b5);
+    -webkit-background-clip: text; /* Clipping the gradient to the text */
+    color: transparent; /* Making the text transparent to show gradient */
 }

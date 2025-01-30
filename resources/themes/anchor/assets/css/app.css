@@ -88,6 +88,37 @@ html, body{
   scrollbar-width: none;  /* Firefox */
 }
 
+
+/* Style the scrollbar itself */
+::-webkit-scrollbar {
+width: 8px; /* Width of the scrollbar */
+}
+/* Style the track (background) of the scrollbar */
+::-webkit-scrollbar-track {
+background: #f1f1f1; /* Light grey background */
+border-radius: 10px; /* Rounded corners for the track */
+}
+/* Style the thumb (draggable part) of the scrollbar */
+::-webkit-scrollbar-thumb {
+background: #888; /* Dark grey color for the thumb */
+border-radius: 10px; /* Rounded corners for the thumb */
+}
+/* Hover effect for the thumb */
+::-webkit-scrollbar-thumb:hover {
+background: #555; /* Darker grey when hovering over the thumb */
+}
+/* Optional: Style for dark mode */
+.dark-mode::-webkit-scrollbar-track {
+background: #333; /* Darker background for dark mode */
+}
+.dark-mode::-webkit-scrollbar-thumb {
+background: #aaa; /* Lighter thumb for dark mode */
+}
+.dark-mode::-webkit-scrollbar-thumb:hover {
+background: #888; /* Darker thumb hover in dark mode */
+}
+
+
 .gradient-bg {
   background: linear-gradient(90deg, #E6E6FA, #FFFFFF);
 }
@@ -247,4 +278,41 @@ html, body{
     background: linear-gradient(to right, #4f81e8, #9b57b5);
     -webkit-background-clip: text; /* Clipping the gradient to the text */
     color: transparent; /* Making the text transparent to show gradient */
+}
+
+
+.bg-sidebar{
+background: linear-gradient(90deg, #E6E6FA, #E6E6FA);
+}
+
+
+.side-bar-link:hover span{
+    color: transparent;
+  background: linear-gradient(90deg, #6C63FF, #00C2FF);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+
+.side-bar-link:hover{
+    background: linear-gradient(90deg, #F0F8FF, #FAFAFA);
+}
+
+.gradient-card-bg{
+    background: linear-gradient(90deg, #D6ECFF, #FAFAFA);
+}
+
+.side-bar-dropdown:hover .sidebar-txt{
+    color: transparent;
+  background: linear-gradient(90deg, #6C63FF, #00C2FF);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.bg-dropdown-items{
+    background: linear-gradient(90deg,rgb(221, 221, 242), rgb(221, 221, 242));
+}
+
+    /* Gradient Background for Search Input */
+.bg-search-input {
+    background: linear-gradient(90deg, #D6ECFF, #FAFAFA);
 }

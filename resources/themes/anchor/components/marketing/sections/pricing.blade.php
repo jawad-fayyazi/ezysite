@@ -52,7 +52,7 @@
                     {{--  Say that you have a monthly plan that doesn't have a yearly plan, in that case we will hide the place that doesn't have a price_id --}}
                     x-show="(billing == 'Monthly' && '{{ $plan->monthly_price_id }}' != '') || (billing == 'Yearly' && '{{ $plan->yearly_price_id }}' != '')" 
                     class="flex-1 w-full px-0 mx-auto mb-6 md:max-w-lg lg:mb-0" x-cloak>
-                    <div class="flex flex-col lg:mb-10 h-full bg-white rounded-xl border-2  @if($plan->default){{ 'border-zinc-900 lg:scale-105' }}@else{{ 'border-zinc-200' }}@endif shadow-sm sm:mb-0">
+                    <div class="flex flex-col lg:mb-10 h-full rounded-xl border-2  @if($plan->default){{ 'border-zinc-900 lg:scale-105' }}@else{{ 'border-zinc-200' }}@endif shadow-sm sm:mb-0">
                         <div class="px-8 pt-8">
                             <span class="px-4 py-1 text-base font-medium text-white rounded-full bg-zinc-900 text-uppercase" data-primary="indigo-700">
                                 {{ $plan->name }}
@@ -68,7 +68,7 @@
                             <p class="text-base leading-7 text-zinc-500">{{ $plan->description }}</p>
                         </div>
 
-                        <div class="p-8 mt-auto rounded-b-lg bg-zinc-50">
+                        <div class="p-8 mt-auto rounded-b-lg">
                             <ul class="flex flex-col">
                                 @foreach($features as $feature)
                                     <li class="mt-1">

@@ -24,6 +24,14 @@ const editor = grapesjs.init({
       },
     },
   },
+  assetManager: {
+    upload: `/builder/assetmanager/${projectId}`, // Your local PHP endpoint
+    uploadName: "files",
+    autoAdd: true,
+    headers: {
+      "X-CSRF-TOKEN": csrfToken,
+    },
+  },
   plugins: [
     "grapesjs-preset-webpage", // Add first plugin
     "gjs-blocks-basic", // Add second plugin
@@ -53,6 +61,40 @@ const editor = grapesjs.init({
     },
   },
 });
+
+
+
+
+let fileInput = null;
+// Use a while loop to keep checking until the fileInput is found
+editor.on("asset:open", function () {
+  fileInput = document.getElementById("gjs-am-uploadFile");
+  if (fileInput !== null) {
+    const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB limit
+
+    // Add the change event listener to the file input
+    fileInput.addEventListener("change", function (event) {
+      const file = event.target.files[0];
+
+      if (file && file.size > MAX_FILE_SIZE) {
+        alert("Image is too large. Please upload an image smaller than 1MB.");
+        event.target.value = ""; // Clear the input field
+      }
+    });
+
+    // Once the fileInput is found and the listener is added, stop checking
+    fileInput = null; // Reset to stop the while loop
+  }
+});
+
+
+editor.on("asset:upload:error", (error) => {
+  // Handle error during asset upload
+  console.error(error);
+  alert(error);
+});
+
+
 
 editor.on("load", function () {
   const blockManager = editor.BlockManager;

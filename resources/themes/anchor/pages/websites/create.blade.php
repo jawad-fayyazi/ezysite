@@ -23,15 +23,6 @@ new class extends Component implements HasForms {
     public function mount(): void
     {
         $this->form->fill();
-
-        $user = auth()->user();
-        $roles = $user->getRoleNames(); // Returns a collection 
-
-        $response = auth()->user()->canDo($roles[0], 'canCreateWebsite');
-
-        if($response['status'] === 'danger'){
-            dd($response, $roles[0]);
-        }
     }
 
     public function form(Form $form): Form
@@ -51,6 +42,23 @@ new class extends Component implements HasForms {
 
     public function create(): void
     {
+
+        $user = auth()->user();
+        $roles = $user->getRoleNames(); // Returns a collection 
+
+        $response = auth()->user()->canDo($roles[0], 'canCreateWebsite');
+
+        if ($response['status'] === 'danger') {
+
+            Notification::make()
+                ->danger()
+                ->title($response['title'])
+                ->body($response['body'])
+                ->send();
+
+            $this->redirect('/pricing');
+            return;
+        }
 
         
         $pageId = uniqid();

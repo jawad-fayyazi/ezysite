@@ -15,6 +15,22 @@ new class extends Component {
         $this->private_templates = PrivateTemplate::where('user_id', auth()->id())
             ->orderBy('id', 'desc')
             ->get();
+
+
+
+        $user = auth()->user();
+        $response = $user->canUploadFile($user, 2000000000000000000000);
+
+        if ($response['status'] === 'danger') {
+            dd($response);
+        }
+
+
+
+
+
+
+
     }
 };
 ?>

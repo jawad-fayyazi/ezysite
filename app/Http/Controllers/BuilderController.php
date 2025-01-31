@@ -699,4 +699,51 @@ class BuilderController extends Controller
     }
 
 
+    public function uploadImage(Request $request, $projectId)
+    {
+
+        $user = auth()->user();
+        $fileSize = $request->file('files')[0]->getSize(); // File size in bytes
+        $response = $user->canUploadFile($user, $fileSize);
+
+        if ($response['status'] === 'danger') {
+            return response()->json($response['body'], 400);
+        }
+
+
+        // Ensure the request contains files
+        if ($request->hasFile('files')) {
+            $file = $request->file('files')[0]; // Get the first file
+
+            // Generate a unique name for the file
+            $fileName = time() . '_' . $file->getClientOriginalName();
+
+            // Define the directory where files will be stored
+            $directory = 'usersites/' . $projectId . '/assets';
+
+            // Store the file in the 'public' disk (ensure the folder is publicly accessible)
+            $path = $file->storeAs($directory, $fileName, 'public');
+
+            // Generate a URL for the uploaded file
+            $url = Storage::url($path);
+            // Get the original dimensions of the image
+            $filePath = $file->getRealPath(); // Get the full path of the uploaded image
+            list($width, $height) = getimagesize($filePath);
+
+            // Return the file URL in the response
+            return response()->json([
+                'data' => [
+                    [
+                        'src' => $url, // The URL of the uploaded image
+                        'width' => $width, // Original width
+                        'height' => $height // Original height
+                    ]
+                ]
+            ]);
+        }
+
+        // If no file was uploaded, return an error
+        return response()->json(['error' => 'No file uploaded'], 400);
+    }
+
 }

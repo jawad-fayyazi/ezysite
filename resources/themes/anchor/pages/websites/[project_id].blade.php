@@ -639,6 +639,27 @@ new class extends Component implements HasForms {
     // Duplicate the project
     public function duplicate(): void
     {
+
+
+        $user = auth()->user();
+        $roles = $user->getRoleNames(); // Returns a collection 
+
+        $response = auth()->user()->canDo($roles[0], 'canCreateWebsite');
+
+        if ($response['status'] === 'danger') {
+
+            Notification::make()
+                ->danger()
+                ->title($response['title'])
+                ->body($response['body'])
+                ->send();
+
+            $this->redirect('/pricing');
+            return;
+        }
+
+
+        
         $newProject = $this->project->replicate();
 
         // Generate a unique project name by appending a number

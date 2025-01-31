@@ -99,6 +99,5 @@ Route::post('/footer/data', [BuilderController::class, 'footerData']);
 Route::get('/preview/{project_id}/{filename?}', [BuilderController::class, 'previewFiles']);
 
 
-
-
+Route::post('/builder/assetmanager/{projectId}', [BuilderController::class, 'uploadImage']);
 

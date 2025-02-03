@@ -3,6 +3,7 @@ namespace App\Traits;
 
 use App\Models\Project;
 use App\Models\PrivateTemplate;
+use App\Models\WebPage;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
 use FilesystemIterator;
@@ -37,7 +38,8 @@ trait UserPermissions {
             'registered' => 2,
             'basic' => 1,
             'premium' => 10,
-            'pro' => 50
+            'pro' => 50,
+            'admin' => 100000000000000000
         ];
 
         $userWebsiteCount = $this->projects()->count(); // Assuming a relation
@@ -115,8 +117,30 @@ trait UserPermissions {
         $roles = $user->getRoleNames(); // Get user roles
 
         // Define storage limits based on roles
-        $storageLimit = $roles->contains('premium') ? 1024 * 1024 * 1024 : 5 * 1024 * 1024; // 1GB or 100MB
+        $storageLimits = [
+            'registered' => 100 * 1024 * 1024,  // 100MB
+            'basic' => 500 * 1024 * 1024,       // 500MB
+            'premium' => 500 * 1024 * 1024,     // 500MB
+            'pro' => 500 * 1024 * 1024,         // 500MB
+            'admin' => 1024 * 1024 * 1024,      // 1GB
+        ];
 
+
+        // Get the role (assuming first role in collection)
+        $role = $roles->first();
+
+        // Check if the role exists in the limits
+        if (!isset($storageLimits[$role])) {
+            return [
+                "status" => "danger",
+                "title" => "Role Error",
+                "body" => "Invalid user role."
+            ];
+        }
+
+        // Get the appropriate storage limit for the user's role
+        $storageLimit = $storageLimits[$role];
+        
         // Calculate total storage used
         $usedStorage = $this->calculateUserStorage($user);
 
@@ -125,10 +149,11 @@ trait UserPermissions {
 
         // Check if the user can upload the file
         if ($fileSize > $remainingStorage) {
+            $neededStorage = $fileSize - $remainingStorage; // Calculate how much more storage is needed
             return [
                 "status" => "danger",
-                "title" => [$remainingStorage / 1048576, $usedStorage / 1048576, $storageLimit / 1048576],
-                "body" => "You do not have enough storage to upload this file."
+                "title" => "Storage Limit Reached",
+                "body" => "You do not have enough storage to upload this file. You need an additional " . $this->formatFileSize($neededStorage) . " of storage."
             ];
         }
 
@@ -139,8 +164,22 @@ trait UserPermissions {
         ];
     }
 
+    // Helper function to format file size in human-readable format (e.g., KB, MB, GB)
+    public function formatFileSize($size)
+    {
+        if ($size >= 1024 * 1024 * 1024) {
+            return number_format($size / (1024 * 1024 * 1024), 2) . ' GB';
+        } elseif ($size >= 1024 * 1024) {
+            return number_format($size / (1024 * 1024), 2) . ' MB';
+        } elseif ($size >= 1024) {
+            return number_format($size / 1024, 2) . ' KB';
+        } else {
+            return $size . ' Bytes';
+        }
+    }
+
     // Function to calculate total storage used by the user
-    private function calculateUserStorage($user)
+    public function calculateUserStorage($user)
     {
         $totalSize = 0;
 
@@ -176,7 +215,7 @@ trait UserPermissions {
 
 
     // Function to get the size of a folder
-    private function getFolderSize($folderPath)
+    public function getFolderSize($folderPath)
     {
         if (!file_exists($folderPath)) {
             return 0;
@@ -189,4 +228,56 @@ trait UserPermissions {
 
         return $size;
     }
+
+    /**
+     * Check if a user can create a page
+     * @param string $role The role of the user
+     * @param string $website_id The role of the user
+     * @return array
+     */
+    public function canCreatePage($user, $website_id)
+    {
+        $roles = $user->getRoleNames(); // Get user roles
+        
+        // Define maximum pages allowed for each role
+        $maxPages = [
+            'registered' => 5,   // 5 pages
+            'basic' => 10,       // 10 pages
+            'premium' => 50,     // 50 pages
+            'pro' => 100,        // 100 pages
+            'admin' => 100000000000000000, // Admin: No restriction
+        ];
+
+        // Get the role (assuming first role in collection)
+        $role = $roles->first();
+        
+        
+        // Get the user's current page count (assuming a relation to pages)
+        $userPageCount = WebPage::where("website_id", $website_id)->count();
+        
+        // Check if the user's role is valid and has an assigned page limit
+        if (!isset($maxPages[$role])) {
+            return [
+                "status" => "danger",
+                "title" => "Role Error",
+                "body" => "Invalid user role."
+            ];
+        }
+
+        // Check if the user has reached their page limit
+        if ($userPageCount >= $maxPages[$role]) {
+            return [
+                "status" => "danger",
+                "title" => "Page Limit Reached",
+                "body" => "You have reached the maximum number of pages for your plan."
+            ];
+        }
+
+        return [
+            "status" => "success",
+            "title" => "Allowed",
+            "body" => "You can create a new page."
+        ];
+    }
+
 }

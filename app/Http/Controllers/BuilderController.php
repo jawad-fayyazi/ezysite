@@ -295,6 +295,13 @@ class BuilderController extends Controller
             'website_id' => 'required|integer|exists:projects_data,project_id',  // Ensure the website_id is valid
         ]);
 
+        $user = auth()->user();
+        $response = $user->canCreatePage($user, $request->website_id);
+
+        if ($response['status'] === 'danger') {
+            return response()->json($response['body'], 403);
+        }
+
         try {
             // Fetch the project from the database using the project_id
         $project = Project::find($request->website_id);
@@ -701,18 +708,18 @@ class BuilderController extends Controller
 
     public function uploadImage(Request $request, $projectId)
     {
-
         $user = auth()->user();
-        $fileSize = $request->file('files')[0]->getSize(); // File size in bytes
-        $response = $user->canUploadFile($user, $fileSize);
 
-        if ($response['status'] === 'danger') {
-            return response()->json($response['body'], 400);
-        }
+        // Check if the file is present in the request before accessing it
+        if ($request->hasFile('files') && $request->file('files')[0]) {
+            $fileSize = $request->file('files')[0]->getSize(); // File size in bytes
+            $response = $user->canUploadFile($user, $fileSize);
 
+            if ($response['status'] === 'danger') {
+                return response()->json($response['body'], 403);
+            }
 
-        // Ensure the request contains files
-        if ($request->hasFile('files')) {
+            // Get the file from the request
             $file = $request->file('files')[0]; // Get the first file
 
             // Generate a unique name for the file
@@ -726,11 +733,12 @@ class BuilderController extends Controller
 
             // Generate a URL for the uploaded file
             $url = Storage::url($path);
+
             // Get the original dimensions of the image
             $filePath = $file->getRealPath(); // Get the full path of the uploaded image
             list($width, $height) = getimagesize($filePath);
 
-            // Return the file URL in the response
+            // Return the file URL and dimensions in the response
             return response()->json([
                 'data' => [
                     [
@@ -742,8 +750,30 @@ class BuilderController extends Controller
             ]);
         }
 
-        // If no file was uploaded, return an error
-        return response()->json(['error' => 'No file uploaded'], 400);
+        // If no file was uploaded or file is empty, return an error
+        return response()->json(['error' => 'No file uploaded or file is empty'], 400);
     }
+
+
+    public function deleteImage(Request $request, $projectId)
+    {
+        // Get the relative path from the frontend
+        $filePath = $request->input('imagePath');
+
+        // Full path for file deletion (using the public disk)
+        $fullPath = storage_path('app/public/' . $filePath);
+
+        // Check if file exists before trying to delete it
+        if (file_exists($fullPath)) {
+            // Delete the file
+            unlink($fullPath); // Delete the file from the server
+
+            return response()->json(['success' => true], 200); // Send success response
+        } else {
+            // Return error if the file doesn't exist
+            return response()->json(['error' => 'File not found'], 404);
+        }
+    }
+
 
 }

@@ -170,7 +170,33 @@ new class extends Component implements HasForms {
                         "image/jpg",
                         "image/png",
                     ])
-                    ->helperText("Upload a favicon for your website"),
+                    ->helperText("Upload a favicon for your website")
+                   ->afterStateUpdated(function ($state, callable $set) {
+                    // Ensure file exists in state and is an instance of TemporaryUploadedFile
+                    if ($state && $state instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+                        // Get the file size directly from the uploaded file instance
+                        $fileSize = $state->getSize(); // File size in bytes
+                        
+                        // Get the authenticated user
+                        $user = auth()->user();
+
+                        // Call the canUploadFile method to check if the user can upload the file
+                        $response = $user->canUploadFile($user, $fileSize);
+
+                        // If the user doesn't have enough space, display an error message
+                        if ($response['status'] === 'danger') {
+                            $set('logo', null); // Optionally clear the uploaded file
+                            
+                            Notification::make()
+                            ->danger()
+                            ->title($response['title'])
+                            ->body($response['body'])
+                            ->send();
+
+                        }
+                    }
+                }),
+
 
                 // Robots.txt Textarea
                 Textarea::make("robots_txt")
@@ -654,10 +680,28 @@ new class extends Component implements HasForms {
                 ->body($response['body'])
                 ->send();
 
-            $this->redirect('/pricing');
+            $this->redirect(
+                        "/websites" . "/" . $this->project->project_id
+                    );
             return;
         }
 
+            $sourceFolder = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}";
+
+            $fileSize = $user->getFolderSize($sourceFolder);
+            $response = $user->canUploadFile($user, $fileSize);
+
+            if ($response['status'] === 'danger') {
+            Notification::make()
+                ->danger()
+                ->title($response['title'])
+                ->body($response['body'])
+                ->send();
+                $this->redirect(
+                        "/websites" . "/" . $this->project->project_id
+                    );
+                return;
+            }
 
         
         $newProject = $this->project->replicate();
@@ -886,49 +930,60 @@ new class extends Component implements HasForms {
             if (isset($data["og_img_file"])) {
                 // Get the uploaded file
                 $image = $data["og_img_file"];
-
-                // Validate the image
-                $validator = \Validator::make($data, [
-                    "og_img_file" =>
-                        "required|file|mimes:jpeg,jpg,png|max:1024", // 1MB = 1024KB
-                ]);
-                // If validation fails
-                if ($validator->fails()) {
+                $user = auth()->user();
+                $fileSize = $image->getSize(); // This will give you the size of the file in bytes
+                $response = $user->canUploadFile($user, $fileSize);
+                if ($response['status'] === 'danger') {
                     Notification::make()
                         ->danger()
-                        ->title("Validation Error")
-                        ->body(
-                            "The image must be a PNG, JPEG, or JPG file and cannot exceed 1MB in size."
-                        )
+                        ->title($response['title'])
+                        ->body($response['body'])
                         ->send();
-                    return redirect(
-                        "/websites" . "/" . $this->project->project_id
-                    );
                 }
-                // Generate a random file name (you can also append the extension)
-                $fileName =
-                    uniqid() . "." . $image->getClientOriginalExtension();
-                // Store the image with the random name in the storage
-                $path = $image->storeAs(
-                    "usersites/" . $this->project->project_id . "/og_img",
-                    $fileName
-                );
+                else{
+                    // Validate the image
+                    $validator = \Validator::make($data, [
+                        "og_img_file" =>
+                            "required|file|mimes:jpeg,jpg,png|max:1024", // 1MB = 1024KB
+                    ]);
+                    // If validation fails
+                    if ($validator->fails()) {
+                        Notification::make()
+                            ->danger()
+                            ->title("Validation Error")
+                            ->body(
+                                "The image must be a PNG, JPEG, or JPG file and cannot exceed 1MB in size."
+                            )
+                            ->send();
+                        return redirect(
+                            "/websites" . "/" . $this->project->project_id
+                        );
+                    }
+                    // Generate a random file name (you can also append the extension)
+                    $fileName =
+                        uniqid() . "." . $image->getClientOriginalExtension();
+                    // Store the image with the random name in the storage
+                    $path = $image->storeAs(
+                        "usersites/" . $this->project->project_id . "/og_img",
+                        $fileName
+                    );
 
-                if (!$path) {
-                    Notification::make()
-                        ->danger()
-                        ->title("Error")
-                        ->body(
-                            "Cannot save the OG image, please try agian later."
-                        )
-                        ->send();
-                    return redirect(
-                        "/websites" . "/" . $this->project->project_id
-                    );
+                    if (!$path) {
+                        Notification::make()
+                            ->danger()
+                            ->title("Error")
+                            ->body(
+                                "Cannot save the OG image, please try agian later."
+                            )
+                            ->send();
+                        return redirect(
+                            "/websites" . "/" . $this->project->project_id
+                        );
+                    }
+                    $page->update([
+                        "og_img" => $fileName,
+                    ]);
                 }
-                $page->update([
-                    "og_img" => $fileName,
-                ]);
             }
 
             $page->update([
@@ -1793,6 +1848,35 @@ new class extends Component implements HasForms {
         $this->project->update([
             "live" => true,
         ]);
+
+
+        $user = auth()->user();
+        $fileSize = $user->getFolderSize($targetFolder);
+        // Check if the file is present in the request before accessing it
+        $response = $user->canUploadFile($user, $fileSize);
+
+        if ($response['status'] === 'danger') {
+            if ($this->shouldRedirect) {
+                $this->shouldRedirect = false;
+                $this->deleteLiveWebsite();
+                Notification::make()
+                    ->danger()
+                    ->title($response['title'])
+                    ->body($response['body'])
+                    ->send();
+            // Redirect or refresh logic
+            return redirect("/websites" . "/" . $this->project->project_id);
+        } else {
+            $this->deleteLiveWebsite();
+            return [
+                "status" => "danger",
+                "title" => $response['title'],
+                "body" => $response['body'],
+            ];
+        }
+        }
+
+
 
         if ($this->shouldRedirect) {
             Notification::make()

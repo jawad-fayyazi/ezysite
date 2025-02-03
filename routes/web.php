@@ -101,3 +101,4 @@ Route::get('/preview/{project_id}/{filename?}', [BuilderController::class, 'prev
 
 Route::post('/builder/assetmanager/{projectId}', [BuilderController::class, 'uploadImage']);
 
+Route::delete('/builder/assetmanager/{projectId}', [BuilderController::class, 'deleteImage']);

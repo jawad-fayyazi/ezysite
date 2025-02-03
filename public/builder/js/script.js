@@ -63,36 +63,157 @@ const editor = grapesjs.init({
 });
 
 
-
-
 let fileInput = null;
-// Use a while loop to keep checking until the fileInput is found
+let errorSize = null;
+
+
+// Create the status icon (initially hidden)
+const statusIcon = document.createElement("i");
+statusIcon.style.position = "absolute";
+statusIcon.style.top = "10px";
+statusIcon.style.right = "40px"; // Adjusted to avoid overlapping the close button
+statusIcon.style.fontSize = "22px";
+statusIcon.style.zIndex = "9999";
+statusIcon.style.display = "none"; // Hidden by default
+
+// Create the error message container
+const errorMsg = document.createElement("div");
+errorMsg.style.position = "absolute";
+errorMsg.style.top = "40px"; // Position below the status icon
+errorMsg.style.right = "20px";
+errorMsg.style.padding = "8px 12px";
+errorMsg.style.backgroundColor = "#f8d7da"; // Light red background
+errorMsg.style.color = "#721c24"; // Dark red text
+errorMsg.style.border = "1px solid #f5c6cb";
+errorMsg.style.borderRadius = "4px";
+errorMsg.style.fontSize = "14px";
+errorMsg.style.zIndex = "9999";
+errorMsg.style.display = "none"; // Hidden by default
+
+// Trigger when Asset Manager opens
 editor.on("asset:open", function () {
+  const assetManager = document.querySelector(".gjs-am-assets");
+
+  // Add the status icon and error message if not already added
+  if (assetManager && !assetManager.contains(statusIcon)) {
+    assetManager.appendChild(statusIcon);
+  }
+  if (assetManager && !assetManager.contains(errorMsg)) {
+    assetManager.appendChild(errorMsg);
+  }
+
+  // Get the file input for validation
   fileInput = document.getElementById("gjs-am-uploadFile");
   if (fileInput !== null) {
     const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB limit
 
-    // Add the change event listener to the file input
+    // File size validation
     fileInput.addEventListener("change", function (event) {
       const file = event.target.files[0];
-
       if (file && file.size > MAX_FILE_SIZE) {
-        alert("Image is too large. Please upload an image smaller than 1MB.");
+        errorSize = 'size';
         event.target.value = ""; // Clear the input field
       }
     });
-
-    // Once the fileInput is found and the listener is added, stop checking
-    fileInput = null; // Reset to stop the while loop
   }
 });
 
-
-editor.on("asset:upload:error", (error) => {
-  // Handle error during asset upload
-  console.error(error);
-  alert(error);
+// Show spinner when upload starts
+editor.on("asset:upload:start", () => {
+  statusIcon.className = "fas fa-spinner fa-spin"; // Loading spinner
+  statusIcon.style.color = "#333"; // Default gray color
+  statusIcon.style.display = "block";
+  errorMsg.style.display = "none"; // Hide error message if visible
 });
+
+// Show green tick on upload success
+editor.on("asset:upload:end", () => {
+  saveContent();
+  statusIcon.className = "fas fa-check-circle"; // Green tick icon
+  statusIcon.style.color = "#28a745"; // Green color
+  setTimeout(() => {
+    statusIcon.style.display = "none"; // Hide after 2 seconds
+  }, 2000);
+});
+
+// Show red error icon and message on upload error
+editor.on("asset:upload:error", (error) => {
+
+  let errorMessage = "An error occurred while uploading the file.";
+
+  // If errorSize is 'size', show size-related error message
+  if (errorSize === "size") {
+    errorMessage =
+      "Image is too large. Please upload an image smaller than 1MB.";
+    errorSize = null;
+  }
+  // If error response has a body, show that specific error message
+  else if (error) {
+    errorMessage = error; // Get the error message from the backend response
+  }
+
+  // Show the error message
+  showError(errorMessage);
+});
+
+editor.on("asset:remove", (asset) => {
+  // Get the asset URL or ID to identify which image to delete
+  const imageUrl = asset.get("src"); // Assuming 'src' contains the image URL or ID
+
+  // Make a request to delete the image on the server
+  deleteImageFromServer(imageUrl);
+  saveContent();
+});
+
+// Function to make an API request to the server to delete the image
+function deleteImageFromServer(imageUrl) {
+  // Extract the relative path after /storage/
+  const filePath = imageUrl.replace("https://ezysite.wpengineers.com//storage/", "");
+
+  fetch(`/builder/assetmanager/${projectId}`, {
+    method: "DELETE", // HTTP DELETE method
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content, // Laravel CSRF token
+    },
+    body: JSON.stringify({ imagePath: filePath }), // Send the relative image path to the server
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        showError("Image deleted successfully", "success"); // Success message
+      } else {
+        showError(data.message || "Failed to delete image", "danger"); // Error message
+      }
+    })
+    .catch((error) => {
+      console.log("Error:", error);
+      showError("An error occurred while deleting the image", "danger"); // Error message
+    });
+}
+
+
+
+
+// Reusable function to show error messages
+function showError(message) {
+  statusIcon.className = "fas fa-times-circle"; // Red error icon
+  statusIcon.style.color = "#dc3545"; // Red color
+  statusIcon.style.display = "block";
+
+  errorMsg.textContent = message;
+  errorMsg.style.display = "block";
+
+  // Hide after 3 seconds
+  setTimeout(() => {
+    statusIcon.style.display = "none";
+    errorMsg.style.display = "none";
+  }, 3000);
+}
+
+
+
+
 
 
 
@@ -558,18 +679,15 @@ function renderPages() {
 
 // Add new page on button click
 addPageBtn.addEventListener("click", () => {
-  const newPage = pagesApi.add({
-    name: `Page ${pagesApi.getAll().length + 1}`,
-  });
-  console.log(newPage.id);
+  const uniquePageId = generateUniqueId(); // ✅ Generate Unique ID
 
-  // Now send the new page data to the backend to update the database
   const pageData = {
-    name: newPage.getName(), // Get the page's name
-    page_id: newPage.id, // Page Id
-    website_id: projectId, // Assuming you have a website_id field available
+    name: `Page ${pagesApi.getAll().length + 1}`, // Dynamic page name
+    page_id: uniquePageId,                        // ✅ Add Unique Page ID
+    website_id: projectId,                        // Website ID
   };
 
+  // Send the page data to the database
   fetch("/pages", {
     method: "POST",
     headers: {
@@ -583,18 +701,33 @@ addPageBtn.addEventListener("click", () => {
     .then((response) => response.json())
     .then((data) => {
       if (data.success) {
-        console.log("Page added successfully:", data.page);
-        renderPages(); // Update the list
+        console.log("Page added to DB successfully:", data.page);
+
+        // ✅ Add the page using Builder API with the same unique ID
+        const newPage = pagesApi.add({
+          id: uniquePageId,      // ✅ Assign the same ID to the Builder
+          name: data.page.name,  // Use the DB name
+        });
+
+        // Select the new page & update UI
+        pagesApi.select(newPage.id);
+        renderPages();
         saveContent();
       } else {
-        console.error("Error adding page:", data.error);
+        // ❌ Handle database errors
+        console.error("Error adding page to DB:", data);
+        alert("Failed to add page: " + data); // Show error to user
       }
     })
-    .catch((error) => console.error("Error:", error));
-
-  pagesApi.select(newPage.id); // Switch to the new page
-  renderPages(); // Update the list
+    .catch((error) => {
+      console.error("Error:", error);
+      alert(error);
+    });
 });
+
+function generateUniqueId() {
+  return "page-" + Math.random().toString(36).substr(2, 9); // Example: page-5g7h3k1lz
+}
 
 editor.on("load", function () {
   // Now pages are loaded, call renderPages

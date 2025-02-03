@@ -19,7 +19,7 @@ new class extends Component {
 
 
         $user = auth()->user();
-        $response = $user->canUploadFile($user, 2000000000000000000000);
+        $response = $user->canCreatePage($user, 219);
 
         if ($response['status'] === 'danger') {
             dd($response);

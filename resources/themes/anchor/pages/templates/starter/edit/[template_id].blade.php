@@ -726,6 +726,48 @@ new class extends Component implements HasForms {
 
     public function liveWebsite() 
     {
+
+        // Create the Ezysite branding JS snippet
+        $ezysiteBrandingScript = "
+<script>
+    const ezysiteLabel = document.createElement('div');
+    ezysiteLabel.textContent = 'Powered by Ezysite';
+    
+    // Styling
+    ezysiteLabel.style.position = 'fixed';
+    ezysiteLabel.style.bottom = '15px';
+    ezysiteLabel.style.left = '15px'; // Positioned on the left side
+    ezysiteLabel.style.backgroundColor = '#ede9fe'; // Background color
+    ezysiteLabel.style.color = '#7c3aed'; // Text color
+    ezysiteLabel.style.padding = '5px 10px';
+    ezysiteLabel.style.borderRadius = '8px'; // Slightly smaller rounded corners
+    ezysiteLabel.style.fontSize = '12px'; // Smaller font size
+    ezysiteLabel.style.fontFamily = '\"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif'; // Cleaner font
+    ezysiteLabel.style.opacity = '0.8';
+    ezysiteLabel.style.zIndex = '1000';
+    ezysiteLabel.style.cursor = 'pointer';
+    ezysiteLabel.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.1)'; // Adding shadow
+    
+    // Hover effect to increase opacity
+    ezysiteLabel.addEventListener('mouseover', () => {
+        ezysiteLabel.style.opacity = '1';
+    });
+    
+    // Mouseout effect to reset opacity
+    ezysiteLabel.addEventListener('mouseout', () => {
+        ezysiteLabel.style.opacity = '0.8';
+    });
+
+    // Open Ezysite website on click
+    ezysiteLabel.addEventListener('click', () => {
+        window.open('https://ezysite.wpengineers.com', '_blank');
+    });
+
+    document.body.appendChild(ezysiteLabel);
+</script>";
+
+
+
         // Access liveData array
         $domain = $this->liveData['domain'];
         $pages = $this->liveData['pages']; // Selected pages array
@@ -735,6 +777,10 @@ new class extends Component implements HasForms {
         $robotsTxt = $this->liveData['robots_txt'] ?? '# Default robots.txt';
         $globalHeaderEmbed = $this->liveData['global_header_embed'] ?? '';
         $globalFooterEmbed = $this->liveData['global_footer_embed'] ?? '';
+        $globalFooterEmbed .= $ezysiteBrandingScript;
+
+
+
 
 
         if(!$this->check()){

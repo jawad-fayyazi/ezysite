@@ -41,5 +41,10 @@ class Project extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+    public function pages()
+    {
+        return $this->hasMany(WebPage::class, 'website_id');
+    }
+
 
 }

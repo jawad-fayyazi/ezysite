@@ -1,5 +1,7 @@
 <?php
 use Filament\Notifications\Notification;
+use App\Models\WebPage;
+use App\Models\Project;
 use Livewire\Volt\Component;
 use function Laravel\Folio\{middleware, name};
 	middleware('auth');
@@ -9,6 +11,18 @@ use function Laravel\Folio\{middleware, name};
 new class extends Component  {
 
 	public $usedStorage = null;
+	public $liveWebsites = null;
+	public $totalPages = null;
+	public $customDomains = null;
+	public $statsCard = [];
+
+	public $totalStorage = null;
+	public $totalWebsites = null;
+
+	public $maxPages = null;
+	
+	public $allowedCustomDomains = null;
+
 
 	// Mount method to set the project_id from the URL and fetch the project
 	public function mount(): void
@@ -16,6 +30,128 @@ new class extends Component  {
 		$user = auth()->user();
 		$this->usedStorage = $user->calculateUserStorage($user);
 		$this->usedStorage = $user->formatFileSize($this->usedStorage);
+		$this->totalPages = $this->totalPages();
+		$this->liveWebsites = $this->liveWebsites();
+		$this->customDomains = 0;
+		$this->maxStorage = $this->maxStorage();
+		$this->maxPages = $this->maxPages();
+		$this->totalWebsites = $this->totalWebsites();
+
+		$this->statsCard();
+	}
+
+	public function statsCard()  {
+		$this->statsCard = [
+			[
+				'title' => 'Storage Used',
+				'value' => $this->usedStorage,
+				'max' => $this->maxStorage,
+				'icon' => 'phosphor-cloud',
+				'progressColor' => 'bg-blue-600 dark:bg-blue-500'
+			],
+			[
+				'title' => 'Live Websites',
+				'value' => $this->liveWebsites,
+				'max' => $this->totalWebsites,
+				'icon' => 'phosphor-globe',
+				'progressColor' => 'bg-green-600 dark:bg-green-500'
+			],
+			[
+				'title' => 'Total Pages',
+				'value' => $this->totalPages,
+				'max' => $this->maxPages,
+				'icon' => 'phosphor-browser',
+				'progressColor' => 'bg-purple-600 dark:bg-purple-500'
+			],
+			[
+				'title' => 'Custom Domains',
+				'value' => $this->customDomains,
+				'max' => '2',
+				'icon' => 'phosphor-link-simple-horizontal',
+				'progressColor' => 'bg-pink-600 dark:bg-pink-500'
+			]
+		];
+
+	}
+
+
+	public function maxPages()
+	{
+		if (Auth::check()) {
+			$user = auth()->user();
+			$roles = $user->getRoleNames(); // Get user roles
+			// Get the role (assuming first role in collection)
+			$role = $roles->first();
+			// Check if the role exists in the limits
+			if (!isset($user->maxWebsites[$role])) {
+				return 0;
+			}
+			if (!isset($user->maxWebsites[$role])) {
+				return 0;
+			}
+			
+
+			$websitesLimit = $user->maxWebsites[$role];
+			$pageLimit = $user->maxPages[$role];
+			$totalPageLimit = $websitesLimit * $pageLimit;
+			return $totalPageLimit;
+		}
+		return 0;
+
+	}
+	public function totalPages()
+	{
+
+		if (Auth::check()) {
+			return Auth::user()->projects()->withCount('pages')->get()->sum('pages_count');
+		}
+		return 0;
+
+	}
+	public function totalWebsites()
+	{
+		if (Auth::check()) {
+
+			$totalWebsites = auth()->user()->projects()->count();
+			
+			return $totalWebsites;
+		}
+		return 0;
+	}
+	public function maxStorage()
+	{
+
+		if (Auth::check()) {
+
+			$user = auth()->user();
+			
+
+			$roles = $user->getRoleNames(); // Get user roles
+
+        // Get the role (assuming first role in collection)
+        $role = $roles->first();
+
+        // Check if the role exists in the limits
+        if (!isset($user->storageLimits[$role])) {
+            return 0;
+        }
+
+			$storageLimit = $user->storageLimits[$role];
+			$storageLimit = $user->formatFileSize($storageLimit);
+			return $storageLimit;
+		}
+		return 0;
+
+	}
+
+	public function liveWebsites()
+	{
+
+		if (Auth::check()) {
+			return Auth::user()->projects()->where('live', true)->count();
+		}
+		return 0;
+
 	}
 };
 ?>
@@ -31,26 +167,28 @@ new class extends Component  {
 
 
 		<div class="mb-8">
-          <h1 class="text-3xl font-bold mb-2">Welcome back, User!</h1>
+          <h1 class="text-3xl font-bold mb-2 dark:text-white">Welcome back, {{ Auth::user()->name }}!</h1>
           <p class="text-gray-600 dark:text-gray-400">
             Here's what's happening with your websites
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <DashboardCard/>
-			<div>
-				<div class="flex items-center space-x-4">
-      <div class="p-3 rounded-lg bg-primary-100 dark:bg-primary-900">
-        <x-icon name="phosphor-cloud" class="h-6 w-6 text-primary-600 dark:text-primary-400" />
-      </div>
-      <div>
-        <p class="text-sm text-gray-600 dark:text-gray-400">Storage Used</p>
-        <p class="text-2xl font-bold">{{$this->usedStorage}}</p>
-      </div>
-    </div>
-			</div>
+
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">	
+			@foreach ($statsCard as $card)
+				<x-app.stats-card 
+					:title="$card['title']" 
+					:icon="$card['icon']" 
+					:value="$card['value']" 
+					:max="$card['max']" 
+					:progressColor="$card['progressColor']" 
+				/>
+			@endforeach
         </div>
+
+
+
 
 
 

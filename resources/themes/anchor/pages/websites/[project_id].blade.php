@@ -222,6 +222,40 @@ new class extends Component implements HasForms {
     // Save project as a private template
     public function saveAsPrivateTemplate(): void
     {
+
+            $user = auth()->user();
+            $response = $user->canCreateTemplate($user);
+
+            if ($response['status'] === 'danger') {
+            Notification::make()
+                ->danger()
+                ->title($response['title'])
+                ->body($response['body'])
+                ->send();
+                $this->redirect(
+                        "/websites" . "/" . $this->project->project_id
+                    );
+                return;
+            }
+
+            $sourceFolder = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}";
+
+            $fileSize = $user->getFolderSize($sourceFolder);
+            $response = $user->canUploadFile($user, $fileSize);
+
+            if ($response['status'] === 'danger') {
+            Notification::make()
+                ->danger()
+                ->title($response['title'])
+                ->body($response['body'])
+                ->send();
+                $this->redirect(
+                        "/websites" . "/" . $this->project->project_id
+                    );
+                return;
+            }
+
+
         $robotsTxt = $this->project->robots_txt;
         $headerEmbedGlobal = $this->project->header_embed;
         $footerEmbedGlobal = $this->project->footer_embed;
@@ -339,18 +373,20 @@ new class extends Component implements HasForms {
             "user_id" => auth()->id(), // Associate with the logged-in user
         ]);
 
-        if ($this->project->favicon) {
-            $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/logo/{$this->project->favicon}";
-            if (File::exists($sourcePath)) {
-                $destinationPath = "/var/www/ezysite/public/storage/private-templates/{$privateTemplate->id}/logo/{$privateTemplate->favicon}";
-                $result = $this->copyImage($sourcePath, $destinationPath);
-                if ($result === "danger") {
-                    Notification::make()
-                        ->danger()
-                        ->title("Favicon not found")
-                        ->send();
-                }
+
+
+        // Duplicate associated files
+        $sourceFolder = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}";
+        $targetFolder = "/var/www/ezysite/public/storage/private-templates/{$privateTemplate->id}";
+
+        if (file_exists($sourceFolder)) {
+            // Create the target folder if it doesn't exist
+            if (!file_exists($targetFolder)) {
+                mkdir($targetFolder, 0777, true);
             }
+
+            // Recursive function to copy files and directories
+            $this->copyDirectory($sourceFolder, $targetFolder);
         }
 
         // Create header and footer entries and link them to the template
@@ -392,19 +428,6 @@ new class extends Component implements HasForms {
                 "user_id" => auth()->id(),
             ]);
 
-            if ($page->og_img) {
-                $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/og_img/{$page->og_img}";
-                if (File::exists($sourcePath)) {
-                    $destinationPath = "/var/www/ezysite/public/storage/private-templates/{$privateTemplate->id}/og_img/{$page->og_img}";
-                    $result = $this->copyImage($sourcePath, $destinationPath);
-                    if ($result === "danger") {
-                        Notification::make()
-                            ->danger()
-                            ->title("OG image not found")
-                            ->send();
-                    }
-                }
-            }
         }
 
         Notification::make()
@@ -420,6 +443,39 @@ new class extends Component implements HasForms {
         if (!Gate::allows("create-template")) {
             abort(404);
         }
+
+        $user = auth()->user();
+            $response = $user->canCreateTemplate($user);
+
+            if ($response['status'] === 'danger') {
+            Notification::make()
+                ->danger()
+                ->title($response['title'])
+                ->body($response['body'])
+                ->send();
+                $this->redirect(
+                        "/websites" . "/" . $this->project->project_id
+                    );
+                return;
+            }
+
+        
+        $sourceFolder = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}";
+
+            $fileSize = $user->getFolderSize($sourceFolder);
+            $response = $user->canUploadFile($user, $fileSize);
+
+            if ($response['status'] === 'danger') {
+            Notification::make()
+                ->danger()
+                ->title($response['title'])
+                ->body($response['body'])
+                ->send();
+                $this->redirect(
+                        "/websites" . "/" . $this->project->project_id
+                    );
+                return;
+            }
 
         $robotsTxt = $this->project->robots_txt;
         $headerEmbedGlobal = $this->project->header_embed;
@@ -548,19 +604,24 @@ new class extends Component implements HasForms {
             "template_category_id" => $category->id, // Assign the category ID
         ]);
 
-        if ($this->project->favicon) {
-            $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/logo/{$this->project->favicon}";
-            if (File::exists($sourcePath)) {
-                $destinationPath = "/var/www/ezysite/public/storage/templates/{$template->template_id}/logo/{$template->favicon}";
-                $result = $this->copyImage($sourcePath, $destinationPath);
-                if ($result === "danger") {
-                    Notification::make()
-                        ->danger()
-                        ->title("Favicon not found")
-                        ->send();
-                }
+
+         // Duplicate associated files
+        $sourceFolder = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}";
+        $targetFolder = "/var/www/ezysite/public/storage/templates/{$template->template_id}";
+
+        if (file_exists($sourceFolder)) {
+            // Create the target folder if it doesn't exist
+            if (!file_exists($targetFolder)) {
+                mkdir($targetFolder, 0777, true);
             }
+
+            // Recursive function to copy files and directories
+            $this->copyDirectory($sourceFolder, $targetFolder);
         }
+
+
+
+        
 
         // Create header and footer entries and link them to the template
         $header = TemplateHeaderFooter::create([
@@ -598,19 +659,7 @@ new class extends Component implements HasForms {
                 "template_id" => $template->template_id, // Associate the page with the template
             ]);
 
-            if ($page->og_img) {
-                $sourcePath = "/var/www/ezysite/public/storage/usersites/{$this->project->project_id}/og_img/{$page->og_img}";
-                if (File::exists($sourcePath)) {
-                    $destinationPath = "/var/www/ezysite/public/storage/templates/{$template->template_id}/og_img/{$page->og_img}";
-                    $result = $this->copyImage($sourcePath, $destinationPath);
-                    if ($result === "danger") {
-                        Notification::make()
-                            ->danger()
-                            ->title("OG image not found")
-                            ->send();
-                    }
-                }
-            }
+        
         }
 
         Notification::make()
@@ -668,9 +717,7 @@ new class extends Component implements HasForms {
 
 
         $user = auth()->user();
-        $roles = $user->getRoleNames(); // Returns a collection 
-
-        $response = auth()->user()->canDo($roles[0], 'canCreateWebsite');
+        $response = $user->canCreateWebsite($user);
 
         if ($response['status'] === 'danger') {
 
@@ -1125,6 +1172,51 @@ new class extends Component implements HasForms {
 
     public function previewWebsite()
     {
+
+
+         $user = auth()->user();
+        $response = $user->shouldBranding($user);
+        
+        $ezysiteBrandingScript = "
+<script>
+    const ezysiteLabel = document.createElement('div');
+    ezysiteLabel.textContent = 'Powered by Ezysite';
+    
+    // Styling
+    ezysiteLabel.style.position = 'fixed';
+    ezysiteLabel.style.bottom = '15px';
+    ezysiteLabel.style.left = '15px'; // Positioned on the left side
+    ezysiteLabel.style.backgroundColor = '#ede9fe'; // Background color
+    ezysiteLabel.style.color = '#7c3aed'; // Text color
+    ezysiteLabel.style.padding = '5px 10px';
+    ezysiteLabel.style.borderRadius = '8px'; // Slightly smaller rounded corners
+    ezysiteLabel.style.fontSize = '12px'; // Smaller font size
+    ezysiteLabel.style.fontFamily = '\"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif'; // Cleaner font
+    ezysiteLabel.style.opacity = '0.8';
+    ezysiteLabel.style.zIndex = '1000';
+    ezysiteLabel.style.cursor = 'pointer';
+    ezysiteLabel.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.1)'; // Adding shadow
+    
+    // Hover effect to increase opacity
+    ezysiteLabel.addEventListener('mouseover', () => {
+        ezysiteLabel.style.opacity = '1';
+    });
+    
+    // Mouseout effect to reset opacity
+    ezysiteLabel.addEventListener('mouseout', () => {
+        ezysiteLabel.style.opacity = '0.8';
+    });
+
+    // Open Ezysite website on click
+    ezysiteLabel.addEventListener('click', () => {
+        window.open('https://ezysite.wpengineers.com', '_blank');
+    });
+
+    document.body.appendChild(ezysiteLabel);
+</script>";
+
+
+
         // Access liveData array
         $domain = $this->project->project_id;
         $pages = $this->pages->pluck("id")->toArray(); // Selected pages array
@@ -1133,6 +1225,13 @@ new class extends Component implements HasForms {
         $globalHeaderEmbed = $this->liveData["global_header_embed"] ?? "";
         $globalFooterEmbed = $this->liveData["global_footer_embed"] ?? "";
 
+
+        
+        if ($response['status'] === 'danger') { 
+            $globalFooterEmbed .= $ezysiteBrandingScript;
+        }
+
+        
         if (!$this->mainPage) {
             if ($this->shouldRedirect) {
                 Notification::make()
@@ -1375,9 +1474,53 @@ new class extends Component implements HasForms {
 
         $this->redirect("/websites" . "/" . $this->project->project_id);
     }
+    
 
     public function liveWebsite()
     {
+
+        $user = auth()->user();
+        $response = $user->shouldBranding($user);
+        
+        $ezysiteBrandingScript = "
+<script>
+    const ezysiteLabel = document.createElement('div');
+    ezysiteLabel.textContent = 'Powered by Ezysite';
+    
+    // Styling
+    ezysiteLabel.style.position = 'fixed';
+    ezysiteLabel.style.bottom = '15px';
+    ezysiteLabel.style.left = '15px'; // Positioned on the left side
+    ezysiteLabel.style.backgroundColor = '#ede9fe'; // Background color
+    ezysiteLabel.style.color = '#7c3aed'; // Text color
+    ezysiteLabel.style.padding = '5px 10px';
+    ezysiteLabel.style.borderRadius = '8px'; // Slightly smaller rounded corners
+    ezysiteLabel.style.fontSize = '12px'; // Smaller font size
+    ezysiteLabel.style.fontFamily = '\"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif'; // Cleaner font
+    ezysiteLabel.style.opacity = '0.8';
+    ezysiteLabel.style.zIndex = '1000';
+    ezysiteLabel.style.cursor = 'pointer';
+    ezysiteLabel.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.1)'; // Adding shadow
+    
+    // Hover effect to increase opacity
+    ezysiteLabel.addEventListener('mouseover', () => {
+        ezysiteLabel.style.opacity = '1';
+    });
+    
+    // Mouseout effect to reset opacity
+    ezysiteLabel.addEventListener('mouseout', () => {
+        ezysiteLabel.style.opacity = '0.8';
+    });
+
+    // Open Ezysite website on click
+    ezysiteLabel.addEventListener('click', () => {
+        window.open('https://ezysite.wpengineers.com', '_blank');
+    });
+
+    document.body.appendChild(ezysiteLabel);
+</script>";
+
+
         // Access liveData array
         $domain = $this->liveData["domain"];
         $pages = $this->liveData["pages"]; // Selected pages array
@@ -1387,6 +1530,11 @@ new class extends Component implements HasForms {
         $robotsTxt = $this->liveData["robots_txt"] ?? "# Default robots.txt";
         $globalHeaderEmbed = $this->liveData["global_header_embed"] ?? "";
         $globalFooterEmbed = $this->liveData["global_footer_embed"] ?? "";
+
+        if ($response['status'] === 'danger') { 
+            $globalFooterEmbed .= $ezysiteBrandingScript;
+        }
+
 
         if (!$this->check()) {
             if ($this->shouldRedirect) {

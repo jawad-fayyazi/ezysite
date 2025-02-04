@@ -109,13 +109,44 @@ new class extends Component implements HasForms {
     }
 
 
+    // Recursive function to copy files and directories
+    public function copyDirectory($source, $target)
+    {
+        // Check if the source is a file or directory
+        if (is_file($source)) {
+            copy($source, $target);
+        } elseif (is_dir($source)) {
+            // Create the target directory if it doesn't exist
+            if (!is_dir($target)) {
+                mkdir($target, 0777, true);
+            }
+
+            // Get all files and subdirectories inside the source directory
+            $files = array_diff(scandir($source), [".", ".."]);
+
+            // Loop through files and subdirectories and copy them
+            foreach ($files as $file) {
+                $filePath = $source . DIRECTORY_SEPARATOR . $file;
+                $targetPath = $target . DIRECTORY_SEPARATOR . $file;
+
+                if (is_dir($filePath)) {
+                    // Recursively copy subdirectories
+                    $this->copyDirectory($filePath, $targetPath);
+                } else {
+                    // Copy the file
+                    copy($filePath, $targetPath);
+                }
+            }
+        }
+    }
+
+
     public function create(): void
     {
 
         $user = auth()->user();
-        $roles = $user->getRoleNames(); // Returns a collection 
 
-        $response = auth()->user()->canDo($roles[0], 'canCreateWebsite');
+        $response = $user->canCreateWebsite($user);
 
         if ($response['status'] === 'danger') {
 
@@ -125,7 +156,7 @@ new class extends Component implements HasForms {
                 ->body($response['body'])
                 ->send();
 
-            $this->redirect('/pricing');
+            $this->redirect('/websites');
             return;
         }
 
@@ -319,22 +350,19 @@ new class extends Component implements HasForms {
             'favicon' => $favIcon,
         ]);
 
+        // Duplicate associated files
+        $sourceFolder = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}";
+        $targetFolder = "/var/www/ezysite/public/storage/usersites/{$project->project_id}";
 
-        if ($this->template->favicon){
-            $sourcePath = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}/logo/{$this->template->favicon}";
-            if (File::exists($sourcePath)) {
-
-                $destinationPath = "/var/www/ezysite/public/storage/usersites/{$project->project_id}/logo/{$project->favicon}";
-                $result = $this->copyImage($sourcePath, $destinationPath);
-                if ($result === 'danger') {
-                    Notification::make()
-                        ->danger()
-                        ->title('Favicon not found')
-                        ->send();
-                }
+        if (file_exists($sourceFolder)) {
+            // Create the target folder if it doesn't exist
+            if (!file_exists($targetFolder)) {
+                mkdir($targetFolder, 0777, true);
             }
-        }
 
+            // Recursive function to copy files and directories
+            $this->copyDirectory($sourceFolder, $targetFolder);
+        }
 
 
 
@@ -384,20 +412,6 @@ new class extends Component implements HasForms {
                 'css' => $page['css'],
                 'website_id' => $project->project_id, // Associate the page with the project
             ]);
-
-            if ($page->og_img) {
-                $sourcePath = "/var/www/ezysite/public/storage/templates/{$this->template->template_id}/og_img/{$page->og_img}";
-                if (File::exists($sourcePath)) {
-                    $destinationPath = "/var/www/ezysite/public/storage/usersites/{$project->project_id}/og_img/{$page->og_img}";
-                    $result = $this->copyImage($sourcePath, $destinationPath);
-                    if ($result === "danger") {
-                        Notification::make()
-                            ->danger()
-                            ->title("OG image not found")
-                            ->send();
-                    }
-                }
-            }
         }
 
         Notification::make()

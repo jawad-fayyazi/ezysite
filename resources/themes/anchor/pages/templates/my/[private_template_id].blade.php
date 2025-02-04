@@ -117,9 +117,7 @@ new class extends Component implements HasForms {
 
 
         $user = auth()->user();
-        $roles = $user->getRoleNames(); // Returns a collection 
-
-        $response = auth()->user()->canDo($roles[0], 'canCreateWebsite');
+        $response = $user->canCreateWebsite($user);
 
         if ($response['status'] === 'danger') {
 
@@ -129,7 +127,7 @@ new class extends Component implements HasForms {
                 ->body($response['body'])
                 ->send();
 
-            $this->redirect('/pricing');
+            $this->redirect('/websites');
             return;
         }
 
@@ -323,22 +321,19 @@ new class extends Component implements HasForms {
         ]);
 
 
-        if ($this->template->favicon) {
-            $sourcePath = "/var/www/ezysite/public/storage/private-templates/{$this->template->id}/logo/{$this->template->favicon}";
-            if (File::exists($sourcePath)) {
+        // Duplicate associated files
+        $sourceFolder = "/var/www/ezysite/public/storage/private-templates/{$this->template->id}";
+        $targetFolder = "/var/www/ezysite/public/storage/usersites/{$project->project_id}";
 
-                $destinationPath = "/var/www/ezysite/public/storage/usersites/{$project->project_id}/logo/{$project->favicon}";
-                $result = $this->copyImage($sourcePath, $destinationPath);
-                if ($result === 'danger') {
-                    Notification::make()
-                        ->danger()
-                        ->title('Favicon not found')
-                        ->send();
-                }
+        if (file_exists($sourceFolder)) {
+            // Create the target folder if it doesn't exist
+            if (!file_exists($targetFolder)) {
+                mkdir($targetFolder, 0777, true);
             }
+
+            // Recursive function to copy files and directories
+            $this->copyDirectory($sourceFolder, $targetFolder);
         }
-
-
 
 
         // Create header and footer entries and link them to the project
@@ -377,7 +372,10 @@ new class extends Component implements HasForms {
                 'title' => $page['title'],
                 'meta_description' => $page['meta_description'],
                 'main' => $page['main'],
-                'og' => $page['og'],
+                "og_title" => $page["og_title"],
+                "og_url" => $page["og_url"],
+                "og_description" => $page["og_description"],
+                "og_img" => $page["og_img"],
                 'embed_code_start' => $page['embed_code_start'],
                 'embed_code_end' => $page['embed_code_end'],
                 'html' => $page['html'],
@@ -394,6 +392,37 @@ new class extends Component implements HasForms {
         $this->redirect('/websites');
     }
 
+
+    // Recursive function to copy files and directories
+    public function copyDirectory($source, $target)
+    {
+        // Check if the source is a file or directory
+        if (is_file($source)) {
+            copy($source, $target);
+        } elseif (is_dir($source)) {
+            // Create the target directory if it doesn't exist
+            if (!is_dir($target)) {
+                mkdir($target, 0777, true);
+            }
+
+            // Get all files and subdirectories inside the source directory
+            $files = array_diff(scandir($source), [".", ".."]);
+
+            // Loop through files and subdirectories and copy them
+            foreach ($files as $file) {
+                $filePath = $source . DIRECTORY_SEPARATOR . $file;
+                $targetPath = $target . DIRECTORY_SEPARATOR . $file;
+
+                if (is_dir($filePath)) {
+                    // Recursively copy subdirectories
+                    $this->copyDirectory($filePath, $targetPath);
+                } else {
+                    // Copy the file
+                    copy($filePath, $targetPath);
+                }
+            }
+        }
+    }
 
     private function deleteDirectory($dir)
     {
@@ -454,37 +483,39 @@ new class extends Component implements HasForms {
 <x-layouts.app>
     @volt('templates.edit')
     <x-app.container>
-    <div class="container mx-auto my-6">
-    <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to My Templates" :href="route('my')" />
+        <div class="container mx-auto my-6">
+            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to My Templates" :href="route('my')" />
 
-        <!-- Box with background, padding, and shadow -->    
-    <div class="bg-white p-6 rounded-lg shadow-lg">
-        <div class="flex items-center justify-between mb-5">
-            <!-- Display the current template name as a heading -->
-            <x-app.heading title="Creating from: {{ $this->template->template_name }}"
-                description="{{$this->template->description}}" :border="false" />
+            <!-- Box with background, padding, and shadow -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex items-center justify-between mb-5">
+                    <!-- Display the current template name as a heading -->
+                    <x-app.heading title="Creating from: {{ $this->template->template_name }}"
+                        description="{{$this->template->description}}" :border="false" />
+                </div>
+                <form wire:submit.prevent="save" class="space-y-6">
+                    <!-- Form Fields -->
+                    {{ $this->form }}
+                    <div class="flex justify-end gap-x-3">
+                        <!-- Cancel Button -->
+                        <x-button tag="a" href="/templates/my" color="secondary">
+                            Cancel
+                        </x-button>
+
+                        <!-- Save Changes Button -->
+                        <x-button type="button" wire:click="create"
+                            class="text-white bg-primary-600 hover:bg-primary-500">
+                            Create Website
+                        </x-button>
+                        <x-button type="button" wire:click="delete" color="danger"
+                            wire:confirm="Are you sure you want to delete this template?">
+                            Delete Template
+                        </x-button>
+                    </div>
+
+                </form>
+            </div>
         </div>
-        <form wire:submit.prevent="save" class="space-y-6">
-            <!-- Form Fields -->
-            {{ $this->form }}
-            <div class="flex justify-end gap-x-3">
-    <!-- Cancel Button -->
-    <x-button tag="a" href="/templates/my" color="secondary">
-        Cancel
-    </x-button>
-
-        <!-- Save Changes Button -->
-    <x-button type="button" wire:click="create" class="text-white bg-primary-600 hover:bg-primary-500">
-        Create Website
-    </x-button>
-        <x-button type="button" wire:click="delete" color="danger"  wire:confirm="Are you sure you want to delete this template?">
-            Delete Template
-        </x-button>
-</div>
-
-        </form>
-    </div>
-    </div>
     </x-app.container>
     @endvolt
 </x-layouts.app>

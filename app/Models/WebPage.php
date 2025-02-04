@@ -59,4 +59,6 @@ class WebPage extends Model
     {
         return $this->main === 1;
     }
+
+    
 }

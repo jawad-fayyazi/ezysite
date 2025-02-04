@@ -15,22 +15,6 @@ new class extends Component {
         $this->private_templates = PrivateTemplate::where('user_id', auth()->id())
             ->orderBy('id', 'desc')
             ->get();
-
-
-
-        $user = auth()->user();
-        $response = $user->canCreatePage($user, 219);
-
-        if ($response['status'] === 'danger') {
-            dd($response);
-        }
-
-
-
-
-
-
-
     }
 };
 ?>

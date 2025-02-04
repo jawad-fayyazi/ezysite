@@ -44,9 +44,7 @@ new class extends Component implements HasForms {
     {
 
         $user = auth()->user();
-        $roles = $user->getRoleNames(); // Returns a collection 
-
-        $response = auth()->user()->canDo($roles[0], 'canCreateWebsite');
+        $response = $user->canCreateWebsite($user);
 
         if ($response['status'] === 'danger') {
 
@@ -56,7 +54,7 @@ new class extends Component implements HasForms {
                 ->body($response['body'])
                 ->send();
 
-            $this->redirect('/pricing');
+            $this->redirect('/websites');
             return;
         }
 

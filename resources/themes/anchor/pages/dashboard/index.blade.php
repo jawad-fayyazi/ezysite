@@ -18,7 +18,7 @@ new class extends Component  {
 
 	public $totalStorage = null;
 	public $totalWebsites = null;
-
+	public $websitesRecent = [];
 	public $maxPages = null;
 	
 	public $allowedCustomDomains = null;
@@ -36,6 +36,7 @@ new class extends Component  {
 		$this->maxStorage = $this->maxStorage();
 		$this->maxPages = $this->maxPages();
 		$this->totalWebsites = $this->totalWebsites();
+		$this->websitesRecent = $this->websitesRecent();
 
 		$this->statsCard();
 	}
@@ -108,6 +109,17 @@ new class extends Component  {
 		return 0;
 
 	}
+	public function websitesRecent()
+	{
+		if (Auth::check()) {
+			// Get the 3 most recently modified websites for the authenticated user
+			$websitesRecent = auth()->user()->projects()->orderBy('updated_at', 'desc')->take(3)->get();
+
+			return $websitesRecent;
+		}
+		return 0;
+	}
+
 	public function totalWebsites()
 	{
 		if (Auth::check()) {
@@ -157,107 +169,64 @@ new class extends Component  {
 ?>
 
 <x-layouts.app>
-	@volt('dashboard')
-	<x-app.container x-data class="lg:space-y-6" x-cloak>
-        
-		<x-app.alert id="dashboard_alert" class="hidden lg:flex">This is the user dashboard where users can manage settings and access features. <a href="https://devdojo.com/wave/docs" target="_blank" class="mx-1 underline">View the docs</a> to learn more.</x-app.alert>
-
-
-
-
-
-		<div class="mb-8">
-          <h1 class="text-3xl font-bold mb-2 dark:text-white">Welcome back, {{ Auth::user()->name }}!</h1>
-          <p class="text-gray-600 dark:text-gray-400">
-            Here's what's happening with your websites
-          </p>
-        </div>
-
-
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">	
-			@foreach ($statsCard as $card)
-				<x-app.stats-card 
-					:title="$card['title']" 
-					:icon="$card['icon']" 
-					:value="$card['value']" 
-					:max="$card['max']" 
-					:progressColor="$card['progressColor']" 
-				/>
-			@endforeach
-        </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-	{{--
-	<x-app.heading
-	title="Dashboard"
-                description="Welcome to an example application dashboard. Find more resources below."
-                :border="false"
+   @volt('dashboard')
+   <x-app.container x-data class="lg:space-y-6" x-cloak>
+      <x-app.alert id="dashboard_alert" class="hidden lg:flex">
+         <a href="{{route('settings.subscription')}}" class="text-sm text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400">
+         🚀 Unlock more features! <span class="font-semibold">Upgrade your plan</span>
+         </a>		
+      </x-app.alert>
+      <x-app.heading
+         title="Welcome back, {{ Auth::user()->name }}!"
+         description="Here's what's happening with your websites"
+         :border="false"
+         />
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+         @foreach ($statsCard as $card)
+         @admin
+         <x-app.stats-card 
+            :title="$card['title']" 
+            :icon="$card['icon']" 
+            :value="$card['value']" 
             />
-
-        <div class="flex flex-col w-full mt-6 space-y-5 md:flex-row lg:mt-0 md:space-y-0 md:space-x-5">
-            <x-app.dashboard-card
-				href="https://devdojo.com/wave/docs"
-				target="_blank"
-				title="Documentation"
-				description="Learn how to customize your app and make it shine!"
-				link_text="View The Docs"
-				image="/wave/img/docs.png"
-			/>
-			<x-app.dashboard-card
-				href="https://devdojo.com/questions"
-				target="_blank"
-				title="Ask The Community"
-				description="Share your progress and get help from other builders."
-				link_text="Ask a Question"
-				image="/wave/img/community.png"
-			/>
-        </div>
-
-		<div class="flex flex-col w-full mt-5 space-y-5 md:flex-row md:space-y-0 md:mb-0 md:space-x-5">
-			<x-app.dashboard-card
-				href="https://github.com/thedevdojo/wave"
-				target="_blank"
-				title="Github Repo"
-				description="View the source code and submit a Pull Request"
-				link_text="View on Github"
-				image="/wave/img/laptop.png"
-			/>
-			<x-app.dashboard-card
-			href="https://devdojo.com"
-				target="_blank"
-				title="Resources"
-				description="View resources that will help you build your SaaS"
-				link_text="View Resources"
-				image="/wave/img/globe.png"
-			/>
-		<v>
-
-		<div class="mt-5 space-y-5">
-			@subscriber
-			<p>You are a subscribed user with the <strong>{{ auth()->user()->roles()->first()->name }}</strong> role. Learn <a href="https://devdojo.com/wave/docs/features/roles-permissions" target="_blank" class="underline">more about roles</a> here.</p>
-				<x-app.message-for-subscriber />
-			@else
-				<p>This current logged in user has a <strong>{{ auth()->user()->roles()->first()->name }}</strong> role. To upgrade, <a href="{{ route('settings.subscription') }}" class="underline">subscribe to a plan</a>. Learn <a href="https://devdojo.com/wave/docs/features/roles-permissions" target="_blank" class="underline">more about roles</a> here.</p>
-			@endsubscriber
-			
-			@admin
-				<x-app.message-for-admin />
-			@endadmin
-		</div>
-		--}}	
-    </x-app.container>
-	<script src="{{ asset('builder/js/app.js') }}"></script>
-	@endvolt
+         @else
+         <x-app.stats-card 
+            :title="$card['title']"
+            :icon="$card['icon']" 
+            :value="$card['value']" 
+            :max="$card['max']" 
+            :progressColor="$card['progressColor']" 
+            />
+         @endadmin
+         @endforeach
+      </div>
+      <div class='mb-8'>
+         <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Recent Websites</h2>
+            <div class="flex gap-4">
+               <a href="/websites" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 flex items-center">
+                  View All
+                  <x-icon name="phosphor-caret-right" class="h-5 w-5" />
+               </a>
+               <a href="/websites/create" class="btn btn-primary">
+                  <x-icon name="phosphor-plus" class="h-5 w-5 mr-2" />
+                  Create New Website
+               </a>
+            </div>
+         </div>
+         @if($this->websitesRecent->isEmpty())
+         <h3 class="text-lg font-semibold">Looks like you dont have any website. Create your first Website now</h3>
+         @else
+         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach ($this->websitesRecent as $web)
+            <x-app.website-card
+               :website="$web"
+               />
+            @endforeach
+         </div>
+         @endif
+      </div>
+   </x-app.container>
+   <script src="{{ asset('builder/js/app.js') }}"></script>
+   @endvolt
 </x-layouts.app>

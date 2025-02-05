@@ -7,23 +7,24 @@ name('websites');
 
 new class extends Component {
     public $projects;
+    public $ourDomain = '.test.wpengineers.com';
 
     public function mount()
     {
-        $this->projects = auth()->user()->projects()->orderBy('project_id', 'desc')->get();
+        $this->projects = auth()->user()->projects()->orderBy('updated_at', 'desc')->get();
         // Generate placeholder initials for each project
-        foreach ($this->projects as $project) {
-            // Remove special characters and split the name
-            $cleanedName = preg_replace('/[^\w\s]/', '', $project->project_name); // Keep only alphanumeric and spaces
-            $words = explode(' ', trim($cleanedName));
+        // foreach ($this->projects as $project) {
+        //     // Remove special characters and split the name
+        //     $cleanedName = preg_replace('/[^\w\s]/', '', $project->project_name); // Keep only alphanumeric and spaces
+        //     $words = explode(' ', trim($cleanedName));
 
-            // Get first letter of the first word and last word, if available
-            $firstLetter = isset($words[0]) ? substr($words[0], 0, 1) : '';
-            $lastLetter = isset($words[count($words) - 1]) ? substr($words[count($words) - 1], 0, 1) : '';
+        //     // Get first letter of the first word and last word, if available
+        //     $firstLetter = isset($words[0]) ? substr($words[0], 0, 1) : '';
+        //     $lastLetter = isset($words[count($words) - 1]) ? substr($words[count($words) - 1], 0, 1) : '';
 
-            // Combine initials, default to "NA" if no valid characters
-            $project->placeholder_text = strtoupper($firstLetter . $lastLetter) ?: 'NA';
-        }
+        //     // Combine initials, default to "NA" if no valid characters
+        //     $project->placeholder_text = strtoupper($firstLetter . $lastLetter) ?: 'NA';
+        // }
     }
 
 }
@@ -31,8 +32,10 @@ new class extends Component {
 
 <x-layouts.app>
     @volt('websites')
-    <x-app.container>
-        <div class="container mx-auto my-6">
+<x-app.container x-data class="lg:space-y-6" x-cloak>
+
+
+        {{--<div class="container mx-auto my-6">
             <div class="bg-white p-6 rounded-lg shadow-lg">
 
             <div class="flex items-center justify-between mb-5">
@@ -80,7 +83,54 @@ new class extends Component {
                     </div>
                 @endif
             </div>
+        </div>--}}
+
+
+              <x-app.heading
+         title="My Websites"
+         description="Manage all your websites in one place"
+         :border="false"
+         />
+
+<div x-data="{ searchQuery: '' }" >
+        <div class="flex flex-col md:flex-row justify-between gap-4 mb-8">
+            {{-- Search Bar --}}
+            <div class="flex-1">
+               <div class="relative">
+                    <x-icon name="phosphor-magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input type="text" placeholder="Search websites..." class="input pl-10" x-model="searchQuery" />
+                </div>
+            </div>
+        
+            {{-- Create New Website Button --}}
+            <div class="flex gap-4">
+                <a href="{{ route('websites.create') }}" class="btn btn-primary whitespace-nowrap">
+                    <x-icon name="phosphor-plus" class="h-5 w-5 mr-2" />
+                    Create New Website
+                </a>
+            </div>
         </div>
+
+         @if($projects->isEmpty())
+         <h3 class="text-lg font-semibold">Looks like you dont have any website. Create your first Website now</h3>
+         @else
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @foreach ($projects as $web)
+<div x-show="
+    searchQuery === '' ||
+    {{ json_encode($web->project_name) }}.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    {{ json_encode($web->description ?? '') }}.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    {{ json_encode($web->domain . $this->ourDomain ?? '') }}.toLowerCase().includes(searchQuery.toLowerCase())
+">            <x-app.website-card :website="$web" />
+            </div>
+        @endforeach
+    </div>
+    @endif
+</div>
+
+
+
     </x-app.container>
     @endvolt
 </x-layouts.app>

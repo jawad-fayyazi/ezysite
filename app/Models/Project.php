@@ -11,7 +11,7 @@ class Project extends Model
 
     protected $table = 'projects_data';  // Name of the table
     protected $primaryKey = 'project_id';  // Primary key of the table
-    public $timestamps = false;  // If you don't have timestamps in your table
+    public $timestamps = true;  // If you don't have timestamps in your table
 
     // Fillable properties (allowed to be mass-assigned)
     protected $fillable = [

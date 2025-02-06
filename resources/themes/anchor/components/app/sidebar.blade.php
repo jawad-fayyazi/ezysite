@@ -41,6 +41,9 @@
     <x-app.sidebar-link href="/templates" icon="phosphor-browser" :active="Request::is('templates')">
         Templates
     </x-app.sidebar-link>
+    <x-app.sidebar-link href="/templates/my" icon="phosphor-folder-user" :active="Request::is('templates/my')">
+        My Templates
+    </x-app.sidebar-link>
 
 
 

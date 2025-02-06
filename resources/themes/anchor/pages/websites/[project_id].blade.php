@@ -133,7 +133,7 @@ new class extends Component implements HasForms {
             "robots_txt" => $this->project->robots_txt, // Add robots.txt field
             "header_embed" => $this->project->header_embed, // Add embed code for header
             "footer_embed" => $this->project->footer_embed, // Add embed code for footer
-        ]);
+        ]);    
     }
 
     // Define the form schema
@@ -151,7 +151,7 @@ new class extends Component implements HasForms {
                 Textarea::make("description")
                     ->label("Description")
                     ->placeholder("Describe your website")
-                    ->rows(5)
+                    
                     ->maxLength(1000),
 
                 // Logo Uploader
@@ -201,22 +201,20 @@ new class extends Component implements HasForms {
                 // Robots.txt Textarea
                 Textarea::make("robots_txt")
                     ->label("Edit Robots.txt")
-                    ->placeholder("Add or modify the Robots.txt content")
-                    ->rows(5),
+                    ->placeholder("Add or modify the Robots.txt content"),
 
                 // Embed Code for Header
                 Textarea::make("header_embed")
                     ->label("Embed Code in Header")
-                    ->placeholder("Add custom embed code for the header")
-                    ->rows(5),
+                    ->placeholder("Add custom embed code for the header"),
 
                 // Embed Code for Footer
                 Textarea::make("footer_embed")
                     ->label("Embed Code in Footer")
-                    ->placeholder("Add custom embed code for the footer")
-                    ->rows(5),
+                    ->placeholder("Add custom embed code for the footer"),
             ])
-            ->statePath("data");
+            ->statePath("data")
+            ->columns(2);
     }
 
     // Save project as a private template
@@ -1466,9 +1464,9 @@ new class extends Component implements HasForms {
 
         Notification::make()
             ->success()
-            ->title("Domain Reserved")
+            ->title("Domain Connected")
             ->body(
-                "The domain for your website has been successfully reserved."
+                "The domain has been successfully connected to your website."
             )
             ->send();
 
@@ -2595,39 +2593,14 @@ HTML;
 
 <x-layouts.app>
   @volt('websites.edit')
-  <x-app.container>
+  <x-app.container x-data class="lg:space-y-6" x-cloak>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-      /* Style the scrollbar itself */
-      ::-webkit-scrollbar {
-      width: 8px; /* Width of the scrollbar */
-      }
-      /* Style the track (background) of the scrollbar */
-      ::-webkit-scrollbar-track {
-      background: #f1f1f1; /* Light grey background */
-      border-radius: 10px; /* Rounded corners for the track */
-      }
-      /* Style the thumb (draggable part) of the scrollbar */
-      ::-webkit-scrollbar-thumb {
-      background: #888; /* Dark grey color for the thumb */
-      border-radius: 10px; /* Rounded corners for the thumb */
-      }
-      /* Hover effect for the thumb */
-      ::-webkit-scrollbar-thumb:hover {
-      background: #555; /* Darker grey when hovering over the thumb */
-      }
-      /* Optional: Style for dark mode */
-      .dark-mode::-webkit-scrollbar-track {
-      background: #333; /* Darker background for dark mode */
-      }
-      .dark-mode::-webkit-scrollbar-thumb {
-      background: #aaa; /* Lighter thumb for dark mode */
-      }
-      .dark-mode::-webkit-scrollbar-thumb:hover {
-      background: #888; /* Darker thumb hover in dark mode */
-      }
-    </style>
-    <div class="container mx-auto my-6">
+    
+    
+    
+    
+    
+   {{-- <div class="container mx-auto my-6">
       <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Websites" :href="route('websites')" />
       <!-- Box with background, padding, and shadow -->
       <div class="bg-white p-6 rounded-lg shadow-lg">
@@ -3266,7 +3239,444 @@ HTML;
         </div>
       </div>
     </div>
-    </div>
+    </div>--}}
+
+
+{{-- Header --}}
+<div class="mb-8">
+   <a href="/websites" class="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 mb-4">
+      <x-icon name="phosphor-arrow-left" class="h-5 w-5 mr-2" />
+      Back to Websites
+   </a>
+   <div class="flex justify-between items-start">
+      <div>
+         <x-app.heading
+            title="{{$this->project->project_name}}"
+            description="{{$this->project->description}}"
+            :border="false"
+            />
+         @if($this->project->live)
+         <a href="{{ 'https://' . $this->project->domain . $this->ourDomain}}"
+            class="text-gray-600 dark:text-gray-400 hover:underline"
+            target="_blank">{{ 'https://' . $this->project->domain . $this->ourDomain}}</a>
+         @endif
+      </div>
+      <div class="flex items-center space-x-4">
+         <span class="px-3 py-1 rounded-full text-sm 
+            {{ $this->project->live ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200' }}">
+         {{ $this->project->live ? 'Live' : 'Draft' }}
+         </span>
+         <div class="relative">
+            <!-- Three-dot Dropdown -->
+            <x-dropdown>
+               <x-slot name="trigger">
+                  <button class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                     <x-icon name="phosphor-dots-three-vertical" class="h-5 w-5 font-bold text-gray-600 dark:text-gray-400" />
+                  </button>
+               </x-slot>
+               <div className="py-1">
+                  <!-- Dropdown Options -->
+                  <button wire:click="duplicate" class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                     <x-icon name="phosphor-copy" class="h-4 w-4 mr-2" />
+                     Duplicate Website
+                  </button>
+                  <button wire:click="saveAsPrivateTemplate" class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                     <x-icon name="phosphor-star" class="w-4 h-4 mr-2" />
+                     Save as My Template
+                  </button>
+                  @if(Gate::allows('create-template'))
+                  <button wire:click="saveAsPublicTemplate" class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                     <x-icon name="phosphor-star" class="w-4 h-4 mr-2" />
+                     Save as Public Template
+                  </button>
+                  @endif
+                  @if($this->project->live)
+                  <button class="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 flex items-center" wire:click="deleteLiveWebsite"  wire:confirm="Are you sure you want to take down this website?">
+                     <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" />
+                     Take Down Live Website
+                  </button>
+                  @endif
+                  <button wire:click="delete" class="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 flex items-center" wire:confirm="Are you sure you want to delete this website?">
+                     <x-icon name="phosphor-trash" class="w-4 h-4 mr-2" />
+                     Delete Website
+                  </button>
+               </div>
+            </x-dropdown>
+         </div>
+         <button wire:click= {{ $this->project->live ? 'updateLiveWebsite' : 'liveWebsite' }} class="btn btn-primary">
+         {{ $this->project->live ? 'Update Live Site' : 'Publish' }}
+         </button>
+      </div>
+   </div>
+</div>
+<div x-data="{ activeTab: 'pages', editingPage: null }">
+   {{-- Tabs --}}
+   <div class="mb-6 flex space-x-4 overflow-x-auto pb-2">
+      <button @click.prevent="activeTab = 'pages'" 
+         :class="activeTab === 'pages' 
+         ? 'bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400' 
+         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+         class="flex items-center px-4 py-2 rounded-lg font-medium transition-colors">
+         <x-icon name="phosphor-layout" class="h-5 w-5 inline mr-2" />
+         Pages
+      </button>
+      <button @click.prevent="activeTab = 'settings'" 
+         :class="activeTab === 'settings' 
+         ? 'bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400' 
+         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+         class="flex items-center px-4 py-2 rounded-lg font-medium transition-colors">
+         <x-icon name="phosphor-gear" class="h-5 w-5 inline mr-2" />
+         Settings
+      </button>
+      <button @click.prevent="activeTab = 'domain'" 
+         :class="activeTab === 'domain' 
+         ? 'bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400' 
+         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+         class="flex items-center px-4 py-2 rounded-lg font-medium transition-colors">
+         <x-icon name="phosphor-globe" class="h-5 w-5 inline mr-2" />
+         Domain
+      </button>
+   </div>
+   <!-- Website Settings Box -->
+   <div 
+      x-show="activeTab === 'settings'" 
+      x-cloak
+      id="website-settings" 
+      class="space-y-6 tab-panel card">
+      <div class="flex items-center justify-between mb-5">
+         <!-- Display the current project name as a heading -->
+         <h2 class="text-xl font-semibold mb-6">Website Settings</h2>
+      </div>
+      <div class="space-y-6">
+         <!-- Render the form fields here -->
+         {{ $this->form }}
+         <div class="pt-4 flex justify-end">
+            <!-- Save Changes Button -->
+            <button wire:click="edit" wire:loading.attr="disabled"
+               class="btn btn-primary">
+               <x-icon name="phosphor-floppy-disk" class="h-5 w-5 mr-2"/>
+               Save Changes
+            </button>
+         </div>
+      </div>
+   </div>
+   {{-- Pages List --}}
+   <div x-show="activeTab === 'pages' && !editingPage" class="space-y-6">
+      <div class="space-y-4">
+         @foreach ($this->pages as $page)
+         <div class="card flex justify-between items-center transition-transform hover:-translate-y-0.5">
+            <div>
+               <h3 class="font-medium mb-1">
+                  {{ $page->name }}
+                  @if ($page->main)
+                  <span class="ml-2 text-xs px-2 py-1 rounded-full bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400">
+                  Main Page
+                  </span>
+                  @endif
+               </h3>
+               <p class="text-sm text-gray-600 dark:text-gray-400">
+                  /{{ $page->slug }}
+               </p>
+            </div>
+            <div class="flex items-center space-x-4">
+               <button 
+                  class="btn btn-outline py-2"
+                  @click.prevent="editingPage = {{ $page }}"
+                  >
+               Edit
+               </button>
+            </div>
+         </div>
+         @endforeach
+      </div>
+   </div>
+   {{-- Edit Page Form --}}
+   <div x-show="activeTab === 'pages' && editingPage" class="card p-6">
+      <div class="flex justify-between items-center mb-6">
+         <h2 class="text-xl font-semibold">Edit Page: <span x-text="editingPage.name"></span></h2>
+         <button 
+            class="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            @click="editingPage = null"
+            >
+         ✕
+         </button>
+      </div>
+      @foreach($this->pages as $page)
+      <div x-show="editingPage.id == {{ $page->id }}" x-transition>
+         <div class="space-y-4">
+            {{-- Loop through pageData to show only the fields for the current page --}}
+            {{-- Title --}}
+            <div class="form-group grid gap-y-2">
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+               <input type="text" wire:model="pageData.{{ $page->id }}.page_title" class="input w-full" required>
+            </div>
+            {{-- Slug --}}
+            <div class="form-group grid gap-y-2">
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Slug</label>
+               <input type="text" wire:model="pageData.{{ $page->id }}.page_slug" class="input w-full" required>
+            </div>
+            {{-- Meta Description --}}
+            <div class="form-group grid gap-y-2">
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Meta Description</label>
+               <textarea wire:model="pageData.{{ $page->id }}.meta_description" class="input w-full"></textarea>
+            </div>
+            {{-- Open Graph Title --}}
+            <div class="form-group grid gap-y-2">
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">OG Title</label>
+               <input type="text" wire:model="pageData.{{ $page->id }}.og_title" class="input w-full">
+            </div>
+            {{-- Open Graph URL --}}
+            <div class="form-group grid gap-y-2">
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">OG URL</label>
+               <input type="text" wire:model="pageData.{{ $page->id }}.og_url" class="input w-full">
+            </div>
+            {{-- Open Graph Description --}}
+            <div class="form-group grid gap-y-2">
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">OG Description</label>
+               <textarea wire:model="pageData.{{ $page->id }}.og_description" class="input w-full"></textarea>
+            </div>
+            <!-- Open Graph Image -->
+            <div x-data="{
+               image: null,
+               imageUrl: null,
+               fileName: null,
+               error: null,
+               isDragging: false,
+               canClick: true,
+               validateFile(event) {
+               const file = event.target.files[0];
+               if (file) {
+               const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+               const maxFileSize = 1 * 1024 * 1024; // 1 MB
+               if (!allowedTypes.includes(file.type)) {
+               this.error = 'Invalid file type. Only JPG, JPEG, and PNG are allowed.';
+               this.clearImage();
+               } else if (file.size > maxFileSize) {
+               this.error = 'File size exceeds 1 MB limit.';
+               this.clearImage();
+               } else {
+               this.error = null;
+               this.image = file;
+               this.imageUrl = URL.createObjectURL(file);
+               this.fileName = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+               this.canClick = false; // Disable click after selecting an image
+               }
+               }
+               },
+               clearImage() {
+               this.image = null;
+               this.imageUrl = null;
+               this.fileName = null;
+               this.canClick = true; // Re-enable click after clearing the image
+               },
+               handleDrop(event) {
+               event.preventDefault();
+               this.isDragging = false;
+               const file = event.dataTransfer.files[0];
+               this.validateFile({ target: { files: [file] } });
+               },
+               handleDragOver(event) {
+               event.preventDefault();
+               this.isDragging = true;
+               },
+               handleDragLeave() {
+               this.isDragging = false;
+               }
+               }" class="form-group grid gap-y-2 relative">
+               <!-- Label for OG Image -->
+               <label for="og_img_{{ $page->id }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+               Open Graph Image
+               </label>
+               <!-- File Input Wrapper (Drag & Drop area) -->
+               <div 
+               class="fi-input-wrp rounded-lg shadow-sm ring-1 transition duration-75 bg-white dark:bg-white/5 
+               [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-2 ring-gray-950/10 dark:ring-white/20
+               [&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-600 
+               dark:[&:not(:has(.fi-ac-action:focus))]:focus-within:ring-primary-500 fi-fo-textarea overflow-hidden
+               relative rounded-lg p-4 text-center cursor-pointer"
+               style="min-height: 4.75rem;"
+               @dragover="handleDragOver" 
+               @dragleave="handleDragLeave" 
+               @drop="handleDrop"
+               @click="canClick ? $refs.fileInput.click() : null"
+               >
+               @if(isset($page->id) && isset($pageData[$page->id]['og_img']))
+               <div class="absolute top-0 flex justify-between items-center w-full p-2">
+                  <!-- File Name -->
+                  <span class="text-gray-700 dark:text-gray-300 text-sm mt-1">{{$pageData[$page->id]['og_img']}}</span>
+                  <!-- Delete Button -->
+                  <button wire:confirm="Are you sure you want to delete this OG image?" 
+                     wire:click="unsettAndDeleteOgImg({{$page->id}})"
+                     class="text-white bg-red-500 p-1 rounded-full hover:bg-red-600 mr-5">
+                     <x-icon name="phosphor-trash" class="w-4 h-4" />
+                  </button>
+               </div>
+               <!-- Image Preview Section -->
+               <div class="relative mt-3 z-30">
+                  <img src="{{ asset('storage/usersites/'.$this->project->project_id.'/og_img/'.$pageData[$page->id]['og_img'])}}" alt="Image Preview" 
+                     class="max-w-xs h-auto rounded shadow-lg mx-auto" style="max-height: 12.5rem;" />
+               </div>
+               @else
+               <!-- Hidden File Input -->
+               <input type="file" id="og_img_{{ $page->id }}" 
+                  @change="validateFile($event)" 
+                  class="hidden" 
+                  accept=".jpeg, .png, .jpg" 
+                  x-ref="fileInput"
+                  wire:model="pageData.{{ $page->id }}.og_img_file" />
+               <!-- File Name and Button when Image is Selected -->
+               <div x-show="imageUrl" class="absolute top-0 flex justify-between items-center w-full p-2">
+                  <span class="text-gray-700 dark:text-gray-300 text-sm mt-1" x-text="fileName"></span>
+                  <span>
+                     <span wire:loading wire:target="pageData.{{ $page->id }}.og_img_file" class="mt-1 text-gray-700 dark:text-gray-300 mr-2">Uploading...</span>
+                     <!-- Cross Button -->
+                     <button @click.stop="clearImage" class="text-white bg-red-500 p-1 rounded-full hover:bg-red-600 mr-5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                     </button>
+                  </span>
+               </div>
+               <!-- Drag & Drop Indicator -->
+               <div x-show="isDragging" class="absolute inset-0 flex items-center justify-center text-xl text-gray-700 dark:text-gray-300 z-20" 
+                  style="font-size: 0.875rem;">
+                  <span>Drop here</span>
+               </div>
+               <!-- Default Message for Drag & Drop -->
+               <div x-show="!isDragging && !imageUrl" class="absolute inset-0 flex items-center justify-center text-lg text-gray-700 dark:text-gray-300 z-20" 
+                  style="font-size: 0.875rem;">
+                  <span>Drag & drop an image or <span class="text-black dark:text-white">Browse</span></span>
+               </div>
+               <!-- Image Preview -->
+               <div x-show="imageUrl" class="relative mt-3 z-30">
+                  <img :src="imageUrl" alt="Image Preview" class="max-w-xs h-auto rounded shadow-lg mx-auto" style="max-height: 12.5rem;" />
+               </div>
+               @endif
+            </div>
+            <!-- Error Message -->
+            <div x-show="error" class="text-red-500 text-sm mt-1">
+               <span x-text="error"></span>
+            </div>
+         </div>
+         {{-- Header Embed Code --}}
+         <div class="form-group grid gap-y-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Header Embed Code</label>
+            <textarea wire:model="pageData.{{ $page->id }}.header_embed_code" class="input w-full" rows="3"></textarea>
+         </div>
+         {{-- Footer Embed Code --}}
+         <div class="form-group grid gap-y-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Footer Embed Code</label>
+            <textarea wire:model="pageData.{{ $page->id }}.footer_embed_code" class="input w-full" rows="3"></textarea>
+         </div>
+      </div>
+      {{-- Save Button --}}
+      <div class="pt-4 flex justify-end">
+         <button wire:click="pageUpdate({{ $page->id }})" wire:loading.attr="disabled"
+            class="btn btn-primary">
+            <x-icon name="phosphor-floppy-disk" class="h-5 w-5 mr-2"/>
+            Save Changes
+         </button>
+      </div>
+   </div>
+   @endforeach
+</div>
+<div 
+   x-show="activeTab === 'domain'" 
+   x-cloak 
+   id="live-settings" 
+   class="space-y-8">
+   <!-- Custom Domain Section -->
+   <div class="card space-y-6">
+      <h3 class="text-lg font-medium">Custom Domain</h3>
+      <div>
+         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+         Domain Name
+         </label>
+         <div class="relative">
+            <input 
+            type="text" 
+            class="input pr-44" {{--or pr-28 or 32 or 44 when using ezyiste.wpengineers.com--}}
+            placeholder="example" 
+            wire:model="liveData.domain" 
+            wire:keyup.debounce.1000ms="check"
+            />
+            <span class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 rounded-r-md">
+            {{$this->ourDomain}}
+            </span>    
+         </div>
+         <p class="mt-2 text-sm text-gray-500">
+            Enter your subdomain name (e.g., <strong>yourname</strong>.ezysite.com)
+         </p>
+         <span class='mt-2 text-sm'>{!! $this->message !!}</span>
+      </div>
+      <div class="pt-4">
+         <button wire:click="saveDomain" class="btn btn-primary">
+         Connect Domain
+         </button>
+      </div>
+   </div>
+   @if($this->project->live)
+   <div class="card space-y-6">
+      <h3 class="text-lg font-medium">SSL Certificate</h3>
+      <div class="flex items-center space-x-4">
+         <x-icon name="phosphor-shield-check" class="h-8 w-8 text-green-500" />
+         <div>
+            <p class="font-medium">SSL Active</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+               Your website is secured with HTTPS
+            </p>
+         </div>
+      </div>
+   </div>
+   @endif
+   {{--<!-- DNS Records Section -->
+   <div class="card space-y-6">
+      <h3 class="text-lg font-medium">DNS Records</h3>
+      <div class="overflow-x-auto">
+         <table class="min-w-full">
+            <thead>
+               <tr class="border-b dark:border-gray-700">
+                  <th class="text-left py-3 px-4">Type</th>
+                  <th class="text-left py-3 px-4">Name</th>
+                  <th class="text-left py-3 px-4">Value</th>
+                  <th class="text-left py-3 px-4">TTL</th>
+               </tr>
+            </thead>
+            <tbody>
+               <tr class="border-b dark:border-gray-700">
+                  <td class="py-3 px-4">A</td>
+                  <td class="py-3 px-4">@</td>
+                  <td class="py-3 px-4">76.76.21.21</td>
+                  <td class="py-3 px-4">3600</td>
+               </tr>
+               <tr>
+                  <td class="py-3 px-4">CNAME</td>
+                  <td class="py-3 px-4">www</td>
+                  <td class="py-3 px-4">example.com</td>
+                  <td class="py-3 px-4">3600</td>
+               </tr>
+            </tbody>
+         </table>
+      </div>
+   </div>
+   --}}
+</div>
+</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     <a href="/preview/{{$this->project->project_id}}/index.html" target="_blank" id="redirect-button" style="display: none;"></a>
     @script
     <script>

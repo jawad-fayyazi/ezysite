@@ -65,9 +65,10 @@ if (isset($website->domain)) {
             Last modified: <span x-text="formattedTime"></span>
         </p>
 
-        <div class="flex justify-between items-center pt-4">
+        <div class="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
             <a href="{{route('builder', ['project_id' => $website->project_id, 'project_name' => $website->project_name])}}" target="_blank" class="btn btn-outline py-2 px-4">
                 Edit
+                <x-icon name="phosphor-arrow-right" class="h-4 w-4 ml-2 " />
             </a>
             <a href='/websites/{{ $website->project_id }}' class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                 <x-icon name="phosphor-gear" class="h-5 w-5 text-gray-600 dark:text-gray-400" />

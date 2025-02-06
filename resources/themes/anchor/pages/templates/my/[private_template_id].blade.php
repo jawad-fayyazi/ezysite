@@ -487,30 +487,24 @@ new class extends Component implements HasForms {
             <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to My Templates" :href="route('my')" />
 
             <!-- Box with background, padding, and shadow -->
-            <div class="bg-white p-6 rounded-lg shadow-lg">
+            <div class="card">
                 <div class="flex items-center justify-between mb-5">
                     <!-- Display the current template name as a heading -->
-                    <x-app.heading title="Creating from: {{ $this->template->template_name }}"
-                        description="{{$this->template->description}}" :border="false" />
-                </div>
+                        <h1 class="text-2xl font-bold mb-6">Creating from: {{ $this->template->template_name }}</h1>
+                    </div>
                 <form wire:submit.prevent="save" class="space-y-6">
                     <!-- Form Fields -->
                     {{ $this->form }}
                     <div class="flex justify-end gap-x-3">
                         <!-- Cancel Button -->
-                        <x-button tag="a" href="/templates/my" color="secondary">
+                        <a href="/templates/my" class="btn btn-outline">
                             Cancel
-                        </x-button>
+                        </a>
 
                         <!-- Save Changes Button -->
-                        <x-button type="button" wire:click="create"
-                            class="text-white bg-primary-600 hover:bg-primary-500">
+                        <button class="btn btn-primary" wire:click="create">
                             Create Website
-                        </x-button>
-                        <x-button type="button" wire:click="delete" color="danger"
-                            wire:confirm="Are you sure you want to delete this template?">
-                            Delete Template
-                        </x-button>
+                        </button>
                     </div>
 
                 </form>

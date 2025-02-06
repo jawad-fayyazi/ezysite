@@ -58,7 +58,7 @@ new class extends Component implements HasForms {
             return;
         }
 
-        
+
         $pageId = uniqid();
 
         $projectJson = json_encode([
@@ -116,24 +116,23 @@ new class extends Component implements HasForms {
         
         <x-elements.back-button
         class="max-w-full mx-auto mb-3"
-        text="Back to Websites"
-        :href="route('websites')"
+        text="Back to Dashboard"
+        :href="route('dashboard')"
         />
         
         <!-- Box with background, padding, and shadow -->
-    <div class="bg-white p-6 rounded-lg shadow-lg">
+    <div class="card">
 
         <div class="flex items-center justify-between mb-5">
-            <x-app.heading title="Create Website" description="Fill out the form below to create a new website"
-                :border="false" />
+        <h1 class="text-2xl font-bold mb-6">Create New Website</h1>
         </div>
         <form wire:submit="create" class="space-y-6">
             {{ $this->form }}
             <div class="flex justify-end gap-x-3">
-                <x-button tag="a" href="/websites" color="secondary">Cancel</x-button>
-                <x-button type="button" wire:click="create" class="text-white bg-primary-600 hover:bg-primary-500">
+                <a href="/dashboard" class="btn btn-outline">Cancel</a>
+                <button wire:click="create" class="btn btn-primary">
                     Create Website
-                </x-button>
+                </button>
             </div>
         </form>
     </div>

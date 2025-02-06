@@ -1765,8 +1765,8 @@ HTML;
         <div class="container mx-auto my-6">
 
             <!-- Back Button -->
-            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to {{ $this->categoryName }}"
-                href="/templates/starter/{{$this->template->template_category_id}}" />
+            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Templates"
+                href="/templates" />
 
             <!-- Template Details Box -->
             <div class="bg-white p-6 rounded-lg shadow-lg">

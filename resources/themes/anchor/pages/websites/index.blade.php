@@ -112,7 +112,7 @@ new class extends Component {
         </div>
 
          @if($projects->isEmpty())
-         <h3 class="text-lg font-semibold">Looks like you dont have any website. Create your first Website now</h3>
+         <h3 class="text-lg font-semibold">Looks like you dont have any website. Create your first website now</h3>
          @else
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

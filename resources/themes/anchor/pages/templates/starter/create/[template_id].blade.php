@@ -160,7 +160,7 @@ new class extends Component implements HasForms {
             return;
         }
 
-        
+
         if (!$this->template) {
             Notification::make()
                 ->danger()
@@ -429,15 +429,14 @@ new class extends Component implements HasForms {
         <div class="container mx-auto my-6">
 
             <!-- Back Button -->
-            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to {{ $this->template_category }}"
-                href="/templates/starter/{{$this->template->template_category_id}}" />
+            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Templates"
+                href="/templates" />
 
             <!-- Template Details Box -->
-            <div class="bg-white p-6 rounded-lg shadow-lg">
+            <div class="card">
                 <div class="flex items-center justify-between mb-5">
                     <!-- Heading: Template Name -->
-                    <x-app.heading title="Creating Website from {{ $template->template_name }}"
-                        description="You're creating a website using this template." :border="false" />
+                        <h1 class="text-2xl font-bold mb-6">Creating Website from {{ $template->template_name }}</h1>
                         <!-- Preview Button -->
                          @if($template->live)
                         <x-button 
@@ -464,10 +463,10 @@ new class extends Component implements HasForms {
                     {{ $this->form }}
 
                     <div class="flex justify-end gap-x-3">
-                        <x-button tag="a" href="/templates/starter/{{ $template->template_category_id }}" color="secondary">Cancel</x-button>
-                        <x-button type="button" wire:click="create" class="text-white bg-primary-600 hover:bg-primary-500">
-                            Create Website from Template
-                        </x-button>
+                        <a class="btn btn-outline" href="/templates/starter/{{ $template->template_category_id }}" color="secondary">Cancel</a>
+                        <button class="btn btn-primary" wire:click="create">
+                            Create Website
+                        </button>
                     </div>
                 </form>
             </div>

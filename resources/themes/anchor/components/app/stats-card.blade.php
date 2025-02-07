@@ -5,7 +5,14 @@ $user = auth()->user();
 $valueBytes = $user->convertToBytes($value);
 $maxBytes = $user->convertToBytes($max);
 
-$percentage = ($valueBytes / $maxBytes) * 100;
+    // Check if $maxBytes is not zero to avoid division by zero error
+    if ($maxBytes != 0) {
+        $percentage = ($valueBytes / $maxBytes) * 100;
+    } else {
+        // Handle the situation when $maxBytes is zero.
+        // You might want to set $percentage to 0, or handle it in another way.
+        $percentage = 0;
+    }
 }
 ?>
 

@@ -34,6 +34,7 @@ new class extends Component {
                 ->orderBy('template_id', 'desc')
                 ->get();
         } else {
+            abort(404);
             // Regular users can only view published templates
             $this->templates = Template::where('template_category_id', $this->template_category_id)
                 ->where('is_publish', true)

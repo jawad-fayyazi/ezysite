@@ -484,7 +484,7 @@ new class extends Component implements HasForms {
     @volt('templates.edit')
     <x-app.container>
         <div class="container mx-auto my-6">
-            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to My Templates" :href="route('my')" />
+            <x-elements.back-button text="Back to My Templates" :href="route('my')" />
 
             <!-- Box with background, padding, and shadow -->
             <div class="card">
@@ -492,7 +492,7 @@ new class extends Component implements HasForms {
                     <!-- Display the current template name as a heading -->
                         <h1 class="text-2xl font-bold mb-6">Creating from: {{ $this->template->template_name }}</h1>
                     </div>
-                <form wire:submit.prevent="save" class="space-y-6">
+                <div class="space-y-6">
                     <!-- Form Fields -->
                     {{ $this->form }}
                     <div class="flex justify-end gap-x-3">
@@ -507,7 +507,7 @@ new class extends Component implements HasForms {
                         </button>
                     </div>
 
-                </form>
+                </div>
             </div>
         </div>
     </x-app.container>

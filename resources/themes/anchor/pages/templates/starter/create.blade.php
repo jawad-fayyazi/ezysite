@@ -203,7 +203,7 @@ new class extends Component implements HasForms {
                 </div>
 
                 <!-- Template Creation Form -->
-                <form wire:submit="create" class="space-y-6">
+                <div class="space-y-6">
                     <!-- Form Fields -->
                     {{ $this->form }}
 
@@ -213,7 +213,7 @@ new class extends Component implements HasForms {
                             Create Template
                         </x-button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     </x-app.container>

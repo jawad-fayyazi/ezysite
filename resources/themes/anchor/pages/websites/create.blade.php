@@ -115,9 +115,8 @@ new class extends Component implements HasForms {
         <div class="container mx-auto my-6">
         
         <x-elements.back-button
-        class="max-w-full mx-auto mb-3"
-        text="Back to Dashboard"
-        :href="route('dashboard')"
+        text="Back to Websites"
+        :href="route('websites')"
         />
         
         <!-- Box with background, padding, and shadow -->
@@ -126,7 +125,7 @@ new class extends Component implements HasForms {
         <div class="flex items-center justify-between mb-5">
         <h1 class="text-2xl font-bold mb-6">Create New Website</h1>
         </div>
-        <form wire:submit="create" class="space-y-6">
+        <div class="space-y-6">
             {{ $this->form }}
             <div class="flex justify-end gap-x-3">
                 <a href="/dashboard" class="btn btn-outline">Cancel</a>
@@ -134,7 +133,7 @@ new class extends Component implements HasForms {
                     Create Website
                 </button>
             </div>
-        </form>
+        </div>
     </div>
     </div>
     </x-app.container>

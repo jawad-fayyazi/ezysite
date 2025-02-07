@@ -429,7 +429,7 @@ new class extends Component implements HasForms {
         <div class="container mx-auto my-6">
 
             <!-- Back Button -->
-            <x-elements.back-button class="max-w-full mx-auto mb-3" text="Back to Templates"
+            <x-elements.back-button text="Back to Templates"
                 href="/templates" />
 
             <!-- Template Details Box -->
@@ -439,36 +439,26 @@ new class extends Component implements HasForms {
                         <h1 class="text-2xl font-bold mb-6">Creating Website from {{ $template->template_name }}</h1>
                         <!-- Preview Button -->
                          @if($template->live)
-                        <x-button 
-                            tag="a" 
-                            href="{{ 'https://' . $template->domain . $this->ourDomain}}"
-                            target="_blank" 
-                            color="gray">
-                            Preview Template
-                        </x-button>
+                            <a href="{{ 'https://' . $template->domain . $ourDomain}}"
+                                target="_blank"
+                                class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                                <x-icon name="phosphor-eye" class="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                            </a>
                         @endif
                 </div>
 
-                <!-- Template Image -->
-                <div class="text-center mb-6">
-                    @if ($this->template->ss)
-                    <img src="{{ asset('storage/templates/' . $template->template_id . '/screenshot/' . $template->ss) }}"
-                    alt="{{ $template->template_name }}" class="rounded-md shadow" />
-                    @endif
-                </div>
-
                 <!-- Create Website Form -->
-                <form wire:submit="create" class="space-y-6">
+                <div class="space-y-6">
                     <!-- Form Fields -->
                     {{ $this->form }}
 
                     <div class="flex justify-end gap-x-3">
-                        <a class="btn btn-outline" href="/templates/starter/{{ $template->template_category_id }}" color="secondary">Cancel</a>
+                        <a class="btn btn-outline" href="/templates" color="secondary">Cancel</a>
                         <button class="btn btn-primary" wire:click="create">
                             Create Website
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     </x-app.container>

@@ -28,7 +28,7 @@
         })
     "
     x-on:click="toggle()"
-    class="flex items-center px-1 py-2 text-xs rounded-md cursor-pointer select-none hover:bg-zinc-100 dark:hover:bg-zinc-800"
+    class="flex items-center px-1 py-2 text-xs rounded-md cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700"
 >
 
     <input type="hidden" name="toggleDarkMode" :value="theme">

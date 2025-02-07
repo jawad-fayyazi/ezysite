@@ -18,6 +18,7 @@ new class extends Component {
         if (Gate::allows('create-template')) {
             $this->categories = TemplateCategory::orderBy('id')->get(); // Get all categories in order of their id
         }else{
+            abort(404);
             $this->categories = TemplateCategory::whereHas('templates', function ($query) {
                 // Ensure that there are templates and they are published
                 $query->where('is_publish', 1);

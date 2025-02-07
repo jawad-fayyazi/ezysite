@@ -957,6 +957,128 @@ editor.Commands.add("liveContent", {
 
 
 
+// // Register commands for each action
+// editor.Commands.add("duplicate-component", (editor, sender, { component }) => {
+//   if (component) {
+//     editor.getSelected().clone();
+//   }
+// });
+
+// editor.Commands.add("add-to-symbols", (editor, sender, { component }) => {
+//   if (component) {
+
+//     editor.Components.addSymbol(component);
+
+
+//     const componentName = component.get("name") || "Unnamed Component"; // Get the name or default
+//     const componentId = component.getId(); // Unique ID for block
+//     // Add block dynamically
+//     editor.BlockManager.add(componentId, {
+//       label: componentName, // Block label same as component name
+//       category: "Symbols", // Assign to Symbols category
+//       attributes: { class: "fa fa-cube" }, // Icon
+//       content: component, // Use the component's HTML as content
+//     });
+//   }
+// });
+
+// editor.Commands.add("select-parent", (editor, sender, { component }) => {
+//   if (component) {
+//     const parent = component.parent();
+//     if (parent) editor.select(parent);
+//   }
+// });
+
+// editor.Commands.add("delete-component", (editor, sender, { component }) => {
+//   if (component) {
+//     component.remove();
+//   }
+// });
+
+// // Function to create the custom context menu
+// function createContextMenu(event, component) {
+//   event.preventDefault();
+
+//   // Remove existing menu
+//   let existingMenu = document.getElementById("custom-menu");
+//   if (existingMenu) existingMenu.remove();
+
+//   // Create overlay for detecting clicks outside
+//   let overlay = document.createElement("div");
+//   overlay.id = "context-overlay";
+//   overlay.style.position = "fixed";
+//   overlay.style.top = "0";
+//   overlay.style.left = "0";
+//   overlay.style.width = "100vw";
+//   overlay.style.height = "100vh";
+//   overlay.style.zIndex = "99998";
+//   document.body.appendChild(overlay);
+
+//   // Create context menu
+//   let menu = document.createElement("div");
+//   menu.id = "custom-menu";
+//   menu.style.position = "absolute";
+//   menu.style.background = "white";
+//   menu.style.border = "1px solid #ccc";
+//   menu.style.padding = "5px 0";
+//   menu.style.boxShadow = "0px 4px 6px rgba(0,0,0,0.2)";
+//   menu.style.borderRadius = "5px";
+//   menu.style.fontSize = "14px";
+//   menu.style.fontFamily = "Arial, sans-serif";
+//   menu.style.zIndex = "99999";
+//   menu.style.left = `${event.pageX}px`;
+//   menu.style.top = `${event.pageY}px`;
+//   menu.style.minWidth = "150px";
+
+//   // Menu options
+//   const options = [
+//     { text: "Duplicate", command: "duplicate-component" },
+//     { text: "Add to Symbols", command: "add-to-symbols" },
+//     { text: "Select Parent", command: "select-parent" },
+//     { text: "Delete", command: "delete-component" },
+//   ];
+
+//   options.forEach(({ text, command }) => {
+//     let item = document.createElement("div");
+//     item.innerText = text;
+//     item.style.padding = "8px 12px";
+//     item.style.cursor = "pointer";
+//     item.style.borderBottom = "1px solid #ddd";
+//     item.style.background = "#fff";
+//     item.onmouseover = () => (item.style.background = "#f0f0f0");
+//     item.onmouseout = () => (item.style.background = "#fff");
+//     item.onclick = () => {
+//       editor.runCommand(command, { component });
+//       menu.remove();
+//       overlay.remove();
+//     };
+//     menu.appendChild(item);
+//   });
+
+//   document.body.appendChild(menu);
+
+//   // Hide menu on outside click
+//   overlay.addEventListener("click", () => {
+//     menu.remove();
+//     overlay.remove();
+//   });
+// }
+
+// // Listen for component selection and right-click
+// editor.on("component:selected", (component) => {
+//   const canvas = editor.Canvas.getFrameEl();
+
+//   canvas.contentWindow.document.addEventListener(
+//     "contextmenu",
+//     function (event) {
+//       createContextMenu(event, component);
+//     },
+//     { once: true }
+//   );
+// });
+
+
+
 
 // // Wait until the editor is fully loaded
 // editor.on('load', function () {

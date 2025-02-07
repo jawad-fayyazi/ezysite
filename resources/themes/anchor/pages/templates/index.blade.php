@@ -43,9 +43,13 @@ new class extends Component {
 <x-layouts.app>
     @volt('templates')
     <x-app.container x-data class="lg:space-y-6" x-cloak>
-
+        <div>
+   <x-elements.back-button
+        text="Back to Dashboard"
+        :href="route('dashboard')"
+        />
         <x-app.heading title="Templates" description="Choose from our collection of professional templates" :border="false" />
-
+        </div>
         <div x-data="{ searchQuery: '', selectedCategory: ''  }">
             <div class="flex flex-col md:flex-row justify-between gap-4 mb-8">
                 {{-- Search Bar --}}

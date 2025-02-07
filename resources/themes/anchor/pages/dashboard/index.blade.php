@@ -176,11 +176,28 @@ new class extends Component  {
          🚀 Unlock more features! <span class="font-semibold">Upgrade your plan</span>
          </a>		
       </x-app.alert>
+	  {{--Welcome section--}}
+	<div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
       <x-app.heading
          title="Welcome back, {{ Auth::user()->name }}!"
          description="Here's what's happening with your websites"
          :border="false"
          />
+		<div class="mt-4 md:mt-0">
+			<div class="inline-flex items-center space-x-2 bg-gradient-to-r from-primary-500/10 to-secondary-500/10 rounded-lg p-3">
+				<!-- Assuming you have a Blade component for the Crown icon -->
+				<x-icon name="phosphor-crown" class="h-5 w-5 text-primary-600 dark:text-primary-400" />
+				<div>
+					<span class="text-sm font-medium">{{  Auth::user()->getRoleNames()->first() }} Plan</span>
+					<span class="mx-2 text-gray-400">•</span>
+				</div>
+				<a href="/settings/subscription" class="text-xs px-2 py-1 bg-primary-500 text-white rounded hover:bg-primary-600 transition-colors">
+					Upgrade
+				</a>
+			</div>
+		</div>
+	</div>
+
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
          @foreach ($statsCard as $card)
          @admin

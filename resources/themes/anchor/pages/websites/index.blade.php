@@ -85,13 +85,16 @@ new class extends Component {
             </div>
         </div>--}}
 
+<div>
+        <x-elements.back-button text="Back to Dashboard" :href="route('dashboard')"
+        />
 
               <x-app.heading
          title="My Websites"
          description="Manage all your websites in one place"
          :border="false"
          />
-
+</div>
 <div x-data="{ searchQuery: '' }" >
         <div class="flex flex-col md:flex-row justify-between gap-4 mb-8">
             {{-- Search Bar --}}

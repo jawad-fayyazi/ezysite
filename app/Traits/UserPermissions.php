@@ -367,7 +367,7 @@ trait UserPermissions
         $userPageCount = WebPage::where("website_id", $website_id)->count();
 
         // Check if the user's role is valid and has an assigned page limit
-        if (!isset($maxPages[$role])) {
+        if (!isset($this->maxPages[$role])) {
             return [
                 "status" => "danger",
                 "title" => "Role Error",
@@ -376,7 +376,7 @@ trait UserPermissions
         }
 
         // Check if the user has reached their page limit
-        if ($userPageCount >= $maxPages[$role]) {
+        if ($userPageCount >= $this->maxPages[$role]) {
             return [
                 "status" => "danger",
                 "title" => "Page Limit Reached",

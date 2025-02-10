@@ -70,10 +70,10 @@ new class extends Component implements HasForms {
             ->where("is_header", false)
             ->first();
         if (!$this->header) {
-            $this->header = $this->headerCreate();
+            $this->headerCreate();
         }
         if (!$this->footer) {
-            $this->footer = $this->footerCreate();
+            $this->footerCreate();
         }
 
         $this->liveData = [
@@ -2673,6 +2673,14 @@ HTML;
          <x-icon name="phosphor-layout" class="h-5 w-5 inline mr-2" />
          Pages
       </button>
+      <button @click.prevent="activeTab = 'header-footer'" 
+         :class="activeTab === 'header-footer' 
+         ? 'bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400' 
+         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+         class="flex items-center px-4 py-2 rounded-lg font-medium transition-colors">
+         <x-icon name="phosphor-layout" class="h-5 w-5 inline mr-2" />
+         Header & Footer
+      </button>
       <button @click.prevent="activeTab = 'settings'" 
          :class="activeTab === 'settings' 
          ? 'bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400' 
@@ -2690,7 +2698,7 @@ HTML;
          Domain
       </button>
    </div>
-   <!-- Website Settings Box -->
+   {{-- Website Settings Box --}}
    <div 
       x-show="activeTab === 'settings'" 
       x-cloak
@@ -2933,6 +2941,50 @@ HTML;
    </div>
    @endforeach
 </div>
+   {{-- Header and footer --}}
+
+ <div x-show="activeTab === 'header-footer'" class="space-y-6">
+      <div class="space-y-4">
+         <div class="card flex justify-between items-center transition-transform hover:-translate-y-0.5">
+            <div>
+               <h3 class="font-medium mb-1">
+                  Header
+               </h3>
+            </div>
+            <div class="flex items-center space-x-4">
+               <a href="{{route('header', ['project_id' => $this->project->project_id])}}" target="_blank" class="btn btn-outline py-2 px-4">
+                Edit
+                <x-icon name="phosphor-arrow-right" class="h-4 w-4 ml-2 " />
+            </a>
+               <button 
+                  class="btn btn-danger py-2"
+                  >
+               Reset to default
+               </button>
+            </div>
+         </div>
+         <div class="card flex justify-between items-center transition-transform hover:-translate-y-0.5">
+            <div>
+               <h3 class="font-medium mb-1">
+                  Footer
+               </h3>
+            </div>
+            <div class="flex items-center space-x-4">
+               <a href="{{route('footer', ['project_id' => $this->project->project_id])}}" target="_blank" class="btn btn-outline py-2 px-4">
+                Edit
+                <x-icon name="phosphor-arrow-right" class="h-4 w-4 ml-2 " />
+            </a>
+               <button 
+                  class="btn btn-danger py-2"
+                  >
+               Reset to default
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
+
+
 <div 
    x-show="activeTab === 'domain'" 
    x-cloak 

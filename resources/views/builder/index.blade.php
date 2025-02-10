@@ -39,17 +39,6 @@
                 <!-- Dynamic list of pages will go here -->
                 <ul id="pages-ul"></ul>
             </div>
-
-            <div class="pages-collapse">
-                <i class="fa-solid fa-caret-down"></i> Pages
-            </div>
-            <div id="page-list">
-                <button id="add-page" class="add-page-btn gjs-one-bg gjs-two-color gjs-four-color-h">
-                    <i class="fa-solid fa-plus"></i> &nbsp; Add Page
-                </button>
-                <!-- Dynamic list of pages will go here -->
-                <div id="blocks-ul"></div>
-            </div>
         </div>
 
         <!-- GrapesJS container (builder workspace) -->

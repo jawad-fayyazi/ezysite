@@ -1,8 +1,9 @@
 let contentLoaded = false;
 
 // Fetch the CSRF token from the meta tag
-var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
+var csrfToken = document
+  .querySelector('meta[name="csrf-token"]')
+  .getAttribute("content");
 
 const editor = grapesjs.init({
   container: "#gjs", // Container where the editor is rendered
@@ -62,10 +63,8 @@ const editor = grapesjs.init({
   },
 });
 
-
 let fileInput = null;
 let errorSize = null;
-
 
 // Create the status icon (initially hidden)
 const statusIcon = document.createElement("i");
@@ -111,7 +110,7 @@ editor.on("asset:open", function () {
     fileInput.addEventListener("change", function (event) {
       const file = event.target.files[0];
       if (file && file.size > MAX_FILE_SIZE) {
-        errorSize = 'size';
+        errorSize = "size";
         event.target.value = ""; // Clear the input field
       }
     });
@@ -138,7 +137,6 @@ editor.on("asset:upload:end", () => {
 
 // Show red error icon and message on upload error
 editor.on("asset:upload:error", (error) => {
-
   let errorMessage = "An error occurred while uploading the file.";
 
   // If errorSize is 'size', show size-related error message
@@ -168,7 +166,10 @@ editor.on("asset:remove", (asset) => {
 // Function to make an API request to the server to delete the image
 function deleteImageFromServer(imageUrl) {
   // Extract the relative path after /storage/
-  const filePath = imageUrl.replace("https://ezysite.wpengineers.com//storage/", "");
+  const filePath = imageUrl.replace(
+    "https://ezysite.wpengineers.com//storage/",
+    ""
+  );
 
   fetch(`/builder/assetmanager/${projectId}`, {
     method: "DELETE", // HTTP DELETE method
@@ -181,19 +182,85 @@ function deleteImageFromServer(imageUrl) {
     .then((response) => response.json())
     .then((data) => {
       if (data.success) {
-        showError("Image deleted successfully", "success"); // Success message
+        saveContent();
+        showSuccess("Image deleted successfully"); // Success message
+        syncDeletedAssets(
+          imageUrl,
+          `/header/${projectId}/load`,
+          `/header/${projectId}/save`
+        );
+        syncDeletedAssets(
+          imageUrl,
+          `/footer/${projectId}/load`,
+          `/footer/${projectId}/save`
+        );
       } else {
-        showError(data.message || "Failed to delete image", "danger"); // Error message
+        showSuccess("Image deleted successfully"); // Success message
+        syncDeletedAssets(
+          imageUrl,
+          `/header/${projectId}/load`,
+          `/header/${projectId}/save`
+        );
+        syncDeletedAssets(
+          imageUrl,
+          `/footer/${projectId}/load`,
+          `/footer/${projectId}/save`
+        );
       }
     })
     .catch((error) => {
       console.log("Error:", error);
-      showError("An error occurred while deleting the image", "danger"); // Error message
+      showSuccess("Image deleted successfully"); // Success message
+      syncDeletedAssets(
+        imageUrl,
+        `/header/${projectId}/load`,
+        `/header/${projectId}/save`
+      );
+      syncDeletedAssets(
+        imageUrl,
+        `/footer/${projectId}/load`,
+        `/footer/${projectId}/save`
+      );
     });
 }
 
+async function syncDeletedAssets(
+  deletedAssetSrc,
+  footerJsonUrl,
+  footerJsonUrlSave
+) {
+  try {
+    // ✅ Fetch footer JSON
+    const footerResponse = await fetch(footerJsonUrl);
+    const footerData = await footerResponse.json();
 
+    // ✅ Filter out the deleted asset from the footer assets
+    footerData.assets = footerData.assets.filter(
+      (asset) => asset.src !== deletedAssetSrc
+    );
 
+    // ✅ Save the updated project and footer data
+    await saveUpdatedJson(footerJsonUrlSave, footerData); // Save footer data
+
+    console.log(
+      `✅ Deleted asset '${deletedAssetSrc}' synced across all builders.`
+    );
+  } catch (error) {
+    console.error("❌ Error syncing deleted assets:", error);
+  }
+}
+
+// ✅ Function to save updated JSON
+async function saveUpdatedJson(url, data) {
+  await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-TOKEN": csrfToken, // Laravel CSRF token
+    },
+    body: JSON.stringify(data),
+  });
+}
 
 // Reusable function to show error messages
 function showError(message) {
@@ -211,11 +278,86 @@ function showError(message) {
   }, 3000);
 }
 
+function showSuccess(message) {
+  statusIcon.className = "fas fa-check-circle"; // ✅ Success icon
+  statusIcon.style.color = "#28a745"; // ✅ Green color
+  statusIcon.style.display = "block";
 
+  // ✅ Apply green styling for success message
+  errorMsg.style.backgroundColor = "#d4edda"; // Light green background
+  errorMsg.style.color = "#155724"; // Dark green text
+  errorMsg.style.border = "1px solid #c3e6cb"; // Green border
 
+  errorMsg.textContent = message;
+  errorMsg.style.display = "block";
 
+  // ✅ Revert back to default after 3 seconds
+  setTimeout(() => {
+    statusIcon.style.display = "none";
+    errorMsg.style.display = "none";
 
+    // Revert to default (error) styling
+    errorMsg.style.backgroundColor = "#f8d7da"; // Light red background
+    errorMsg.style.color = "#721c24"; // Dark red text
+    errorMsg.style.border = "1px solid #f5c6cb"; // Red border
+  }, 3000);
+}
 
+editor.on("load", async function () {
+  async function syncHeaderFooterAssets(builder, headerJsonUrl, footerJsonUrl) {
+    try {
+      // ✅ Get the current project data directly from the builder (no extra request)
+      const projectData = editor.getProjectData();
+
+      // ✅ Convert project assets into a Set for comparison
+      const projectAssets = new Set(
+        (projectData.assets || []).map((asset) => asset.src)
+      );
+
+      // ✅ Fetch Header and Footer JSON data
+      const [headerResponse, footerResponse] = await Promise.all([
+        fetch(headerJsonUrl),
+        fetch(footerJsonUrl),
+      ]);
+
+      const [headerData, footerData] = await Promise.all([
+        headerResponse.json(),
+        footerResponse.json(),
+      ]);
+
+      // ✅ Combine header and footer assets
+      const headerFooterAssets = [
+        ...(headerData.assets || []),
+        ...(footerData.assets || []),
+      ];
+
+      // ✅ Find missing assets from header/footer that are NOT in project
+      const missingAssets = headerFooterAssets.filter(
+        (asset) => !projectAssets.has(asset.src)
+      );
+
+      // ✅ Loop through missing assets and add them to the builder
+      missingAssets.forEach((asset) => {
+        builder.AssetManager.add({
+          src: asset.src,
+          width: asset.width || "auto",
+          height: asset.height || "auto",
+        });
+      });
+
+      console.log("✅ Missing header/footer assets added:", missingAssets);
+    } catch (error) {
+      console.error("❌ Error syncing header and footer assets:", error);
+    }
+  }
+
+  // Call function with header/footer URLs
+  syncHeaderFooterAssets(
+    editor,
+    `/header/${projectId}/load`,
+    `/footer/${projectId}/load`
+  );
+});
 
 editor.on("load", function () {
   const blockManager = editor.BlockManager;
@@ -266,12 +408,7 @@ editor.Panels.addButton("options", {
   attributes: { title: "Live this Page" },
 });
 
-
-
-
 let editedPages = {}; // Map to track pages opened and their data
-
-
 
 // Track data for the current page before switching
 const trackAndSwitchPage = (newPageId) => {
@@ -282,7 +419,6 @@ const trackAndSwitchPage = (newPageId) => {
   pagesApi.select(newPageId); // Switch to the new page
   renderPages(); // Update the UI for the selected page
 };
-
 
 // Function to update page data in the object
 const updatePageData = (pageId, html, css) => {
@@ -296,7 +432,6 @@ const updatePageData = (pageId, html, css) => {
   }
 };
 
-
 // Event listener for editor updates
 editor.on("update", () => {
   const activePageId = pagesApi.getSelected()?.id;
@@ -306,7 +441,6 @@ editor.on("update", () => {
     updatePageData(activePageId, htmlContent, cssContent);
   }
 });
-
 
 function saveContent() {
   startLoadingAnimation();
@@ -403,16 +537,30 @@ editor.on("update", function () {
   showPendingChanges();
 });
 
-
 let originalProjectName = document.getElementById("project-name").innerText;
 let is_pending_flag = true;
 // Function to show red dot when there are unsaved changes
 function showPendingChanges() {
+  // ✅ Get the save button
+  const button = editor.Panels.getButton("options", "save-button");
+
+  // ✅ Check if the button exists and has the "fa-floppy-disk" class
+  if (!button || !button.get("className").includes("fa-floppy-disk")) {
+    console.log("🔄 Save button not ready, retrying in 3 seconds...");
+
+    // ✅ Retry function after 3 seconds
+    setTimeout(showPendingChanges, 1500);
+    return; // Exit function to prevent showing red dot
+  }
+
+  // ✅ If save button has "fa-floppy-disk", show the red dot
   if (is_pending_flag) {
     const redDot = document.getElementById("red-dot");
     const projectName = document.getElementById("project-name");
+
     if (redDot) redDot.style.display = "inline"; // Show the red dot
     if (projectName) projectName.innerText = originalProjectName + "*";
+
     is_pending_flag = false;
   }
 }
@@ -427,23 +575,19 @@ function hidePendingChanges() {
   is_pending_flag = true;
 }
 
-
-
 function errorAnimation() {
-  
-    const button = editor.Panels.getButton("options", "save-button");
-    button.set("className", "fa fa-solid fa-circle-exclamation fa-beat-fade error-icon"); // Change icon to checkmark
+  const button = editor.Panels.getButton("options", "save-button");
+  button.set(
+    "className",
+    "fa fa-solid fa-circle-exclamation fa-beat-fade error-icon"
+  ); // Change icon to checkmark
 
-    // Reset back to original icon after 1.5 seconds
-    setTimeout(() => {
-      button.set("className", "fa fa-solid fa-floppy-disk save-icon"); // Original save icon
-      showPendingChanges();
-    }, 4500);
-  
-
+  // Reset back to original icon after 1.5 seconds
+  setTimeout(() => {
+    button.set("className", "fa fa-solid fa-floppy-disk save-icon"); // Original save icon
+    showPendingChanges();
+  }, 4500);
 }
-
-
 
 // Get the Pages API
 const pagesApi = editor.Pages;
@@ -527,12 +671,11 @@ function renderPages() {
       editPageBtn.addEventListener("click", (e) => {
         e.stopPropagation(); // Prevent li click from triggering page selection
         const pid = page.id;
-        if (pid) { 
-          trackAndSwitchPage(pid); 
+        if (pid) {
+          trackAndSwitchPage(pid);
           subMenu.style.display = "none"; // Close sub-menu after action
           renderPages();
-        }
-        else {
+        } else {
           renderPages();
         }
       });
@@ -683,8 +826,8 @@ addPageBtn.addEventListener("click", () => {
 
   const pageData = {
     name: `Page ${pagesApi.getAll().length + 1}`, // Dynamic page name
-    page_id: uniquePageId,                        // ✅ Add Unique Page ID
-    website_id: projectId,                        // Website ID
+    page_id: uniquePageId, // ✅ Add Unique Page ID
+    website_id: projectId, // Website ID
   };
 
   // Send the page data to the database
@@ -705,8 +848,8 @@ addPageBtn.addEventListener("click", () => {
 
         // ✅ Add the page using Builder API with the same unique ID
         const newPage = pagesApi.add({
-          id: uniquePageId,      // ✅ Assign the same ID to the Builder
-          name: data.page.name,  // Use the DB name
+          id: uniquePageId, // ✅ Assign the same ID to the Builder
+          name: data.page.name, // Use the DB name
         });
 
         // Select the new page & update UI
@@ -801,8 +944,6 @@ editor.on("load", () => {
     panelButtonDiv.appendChild(span);
   }
 });
-
-
 
 editor.Commands.add("liveContent", {
   run(editor) {
@@ -955,8 +1096,6 @@ editor.Commands.add("liveContent", {
   },
 });
 
-
-
 // // Register commands for each action
 // editor.Commands.add("duplicate-component", (editor, sender, { component }) => {
 //   if (component) {
@@ -968,7 +1107,6 @@ editor.Commands.add("liveContent", {
 //   if (component) {
 
 //     editor.Components.addSymbol(component);
-
 
 //     const componentName = component.get("name") || "Unnamed Component"; // Get the name or default
 //     const componentId = component.getId(); // Unique ID for block
@@ -1076,9 +1214,6 @@ editor.Commands.add("liveContent", {
 //     { once: true }
 //   );
 // });
-
-
-
 
 // // Wait until the editor is fully loaded
 // editor.on('load', function () {

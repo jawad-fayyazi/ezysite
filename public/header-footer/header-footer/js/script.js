@@ -24,6 +24,14 @@ const editor = grapesjs.init({
       },
     },
   },
+  assetManager: {
+    upload: `/builder/assetmanager/${projectId}`, // Your local PHP endpoint
+    uploadName: "files",
+    autoAdd: true,
+    headers: {
+      "X-CSRF-TOKEN": csrfToken,
+    },
+  },
   plugins: [
     "grapesjs-preset-webpage", // Add first plugin
     "gjs-blocks-basic", // Add second plugin

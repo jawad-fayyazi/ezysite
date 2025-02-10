@@ -15,6 +15,16 @@ $app = new Illuminate\Foundation\Application(
     $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
 );
 
+
+/*
+|--------------------------------------------------------------------------
+| use this to make env var available and loaded
+|--------------------------------------------------------------------------
+|$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+|$dotenv->load();
+|
+*/
+
 /*
 |--------------------------------------------------------------------------
 | Bind Important Interfaces

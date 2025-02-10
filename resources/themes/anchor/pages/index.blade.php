@@ -10,26 +10,33 @@
         'image'         => url('/og_image.png'),
         'type'          => 'website'
     ]"
-    :bodyClass="'gradient-bg'"
+    :bodyClass="''"
 >
         
         <x-marketing.sections.hero />
         
-        <div class="gradient-bg py-12 border-t sm:py-24 border-zinc-200">
+        <div class=" py-12 border-t sm:py-24 border-zinc-200">
             <x-container>
-                <x-marketing.sections.features />
+                {{--<x-marketing.sections.features />--}}
+                <x-marketing.sections.new-features />
             </x-container>
         </div>
 
-        <div class="gradient-bg py-12 border-t sm:py-24 border-zinc-200">
+        <div class=" py-12 border-t sm:py-24 border-zinc-200">
             <x-container>
                 <x-marketing.sections.testimonials />
             </x-container>
         </div> 
              
-        <div class="gradient-bg py-12 border-t sm:py-24 border-zinc-200">
+        <div class=" py-12 border-t sm:py-24 border-zinc-200">
             <x-container>
-                <x-marketing.sections.pricing />
+                {{--<x-marketing.sections.pricing />--}}
+                <x-marketing.sections.new-pricing />
+            </x-container>
+        </div>   
+        <div class=" py-12 border-t sm:py-24 border-zinc-200">
+            <x-container>
+                <x-marketing.sections.cta-home />
             </x-container>
         </div>   
 

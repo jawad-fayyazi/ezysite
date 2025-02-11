@@ -2678,7 +2678,7 @@ HTML;
          ? 'bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400' 
          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
          class="flex items-center px-4 py-2 rounded-lg font-medium transition-colors">
-         <x-icon name="phosphor-layout" class="h-5 w-5 inline mr-2" />
+         <x-icon name="phosphor-blueprint" class="h-5 w-5 inline mr-2" />
          Header & Footer
       </button>
       <button @click.prevent="activeTab = 'settings'" 
@@ -2956,11 +2956,9 @@ HTML;
                 Edit
                 <x-icon name="phosphor-arrow-right" class="h-4 w-4 ml-2 " />
             </a>
-               <button 
-                  class="btn btn-danger py-2"
-                  >
-               Reset to default
-               </button>
+               <button wire:click="resetHeaderToDefault" wire:confirm="Are you sure you want to reset the header?" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    <x-icon name="phosphor-trash" class="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </button>
             </div>
          </div>
          <div class="card flex justify-between items-center transition-transform hover:-translate-y-0.5">
@@ -2974,11 +2972,9 @@ HTML;
                 Edit
                 <x-icon name="phosphor-arrow-right" class="h-4 w-4 ml-2 " />
             </a>
-               <button 
-                  class="btn btn-danger py-2"
-                  >
-               Reset to default
-               </button>
+               <button wire:click="resetFooterToDefault" wire:confirm="Are you sure you want to reset the footer?" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    <x-icon name="phosphor-trash" class="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </button>
             </div>
          </div>
       </div>

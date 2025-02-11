@@ -1,6 +1,6 @@
 @props([
     'title' => '',
-    'type' => 'gray', // info, success, warning, danger
+    'type' => 'default', // info, success, warning, danger
     'id' => uniqid(),
     'dismissable' => true
 ])
@@ -15,7 +15,7 @@
         'success' => 'icon-check-circle-duotone',
         'warning' => 'icon-warning-duotone',
         'danger' => 'icon-warning-circle-duotone',
-        'gray' => 'icon-info-duotone'
+        'default' => 'icon-info-duotone'
     };
 
 
@@ -25,8 +25,8 @@
     x-show="alert_{{ $id }}"
     x-data="{ alert_{{ $id }}: $persist(true) }"
     {{ $attributes->class([
-        'relative pl-5 pr-10 py-4 w-full rounded-md border',
-        'bg-gray-100 dark:bg-zinc-700 dark:border-zinc-600 text-gray-900 dark:text-gray-300 border-gray-200 dark:border-zinc-800' => $type == 'gray',
+        'relative pl-5 pr-10 py-4 w-full rounded-md',
+        'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400' => $type == 'default',
 		'bg-blue-50 text-blue-600 border-blue-200' => $type == 'info',
 		'bg-green-100 text-green-600 border-green-200' => $type == 'success',
 		'bg-yellow-50 text-yellow-600 border-yellow-200' => $type == 'warning',

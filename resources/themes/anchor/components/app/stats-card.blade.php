@@ -28,7 +28,7 @@ $maxBytes = $user->convertToBytes($max);
 
 
         @if(isset($max))
-            <div class="flex items-end gap-1">
+            <div class="flex items-end gap-1 whitespace-nowrap">
                 <p class="text-2xl font-bold">{{ $value }}</p>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">/ {{ $max }}</p>
             </div>

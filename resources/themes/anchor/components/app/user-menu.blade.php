@@ -1,7 +1,7 @@
 @props([
     'position' => 'bottom'
 ])
-<div x-data="{ dropdownOpen: false }" :class="{ 'block z-50 w-auto lg:w-full bg-white dark:bg-gray-800 dark:border-zinc-800' : open, 'hidden': ! open }" class="relative flex-shrink-0 sm:p-0 dark:text-zinc-200 sm:flex sm:w-auto sm:bg-transparent sm:items-center" x-cloak>
+<div x-data="{ dropdownOpen: false }" :class="{ 'block z-50 w-auto lg:w-full  dark:border-zinc-800' : open, 'hidden': ! open }" class="relative flex-shrink-0 sm:p-0 dark:text-zinc-200 sm:flex sm:w-auto sm:bg-transparent sm:items-center" x-cloak>
     <button @click="dropdownOpen=!dropdownOpen" class="flex p-2.5 lg:p-2 w-full space-x-1 text-[13px] rounded-lg justify-between items-center w-full text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 space-x-1.5 overflow-hidden group-hover:autoflow-auto items">
         <span class="relative flex items-center space-x-2">
             <x-avatar src="{{ auth()->user()->avatar() }}" alt="{{ auth()->user()->name }} photo" size="2xs" />
